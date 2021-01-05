@@ -12,12 +12,15 @@ Steps for creating a PoppyHumanoid environment:
        id = 'PoppyHumanoid-v0',
        entry_point = 'gym.envs.mujoco.poppy_humanoid:PoppyHumanoidEnv',
        max_episode_steps = 1000,)`
+       
+3. Import the environment class in `GYM_PATH/env/mujoco/__init__.py` by
+   `from gym.envs.mujoco.poppy_humanoid import PoppyHumanoidEnv`
 
-3. Put `poppy_humanoid.py` into `GYM_PATH/envs/mujoco/`.
+4. Put `poppy_humanoid.py` into `GYM_PATH/envs/mujoco/`.
 
-4. Put the folder `poppyhumanoid` into `GYM_PATH/envs/mujoco/assets/`.
+5. Put the folder `poppyhumanoid` into `GYM_PATH/envs/mujoco/assets/`.
 
-5. Test the environment by running `python run_poppyhumanoid_env.py`.
+6. Test the environment by running `python run_poppyhumanoid_env.py`.
 
 
 
