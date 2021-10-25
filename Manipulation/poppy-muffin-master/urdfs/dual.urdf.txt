@@ -1,0 +1,23 @@
+<robot name="dual">
+	<link name="_name">
+		<visual>
+			<origin xyz="0.485573233395726 -0.999999507828763 -0.726331461969863" rpy="0.0 0.0 0.0" />
+			<geometry>
+				<mesh filename="D:/G/poppy-muffin-master/urdfs/files/dual.stl" scale="0.01 0.01 0.01" />
+			</geometry>
+			<material name="texture">
+				<color rgba="1.0 1.0 1.0 1.0" />
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0.485573233395726 -0.999999507828763 -0.726331461969863" rpy="0.0 0.0 0.0" />
+			<geometry>
+				<mesh filename="D:/G/poppy-muffin-master/urdfs/files/dual.stl"scale="0.01 0.01 0.01"/>
+			</geometry>
+		</collision>
+		<inertial>
+			<mass value="1.0" />
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+		</inertial>
+	</link>
+</robot>

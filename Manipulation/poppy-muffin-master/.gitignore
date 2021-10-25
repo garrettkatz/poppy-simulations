@@ -1,0 +1,11 @@
+*.jpg
+*.png
+*.pkl
+*.npy
+*.pt
+*.eps
+*.pdf
+*.odt
+*~
+
+

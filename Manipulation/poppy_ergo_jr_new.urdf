@@ -207,11 +207,38 @@
   
   <link name="moving_tip"/>
   
+  <link name="movable_hidden_tip">
+  <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.06"/>
+      <geometry>
+        <box size="0.005 0.005 0.005"/>
+      </geometry>
+   </visual>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.03" ixy="0.0" ixz="0.0" iyy="0.03" iyz="0.0" izz="0.03"/>
+    </inertial>
+  </link>
+  
+  
   <joint name="t7m" type="fixed">
     <origin rpy="-1.5707963267949 0 0" xyz="0 -0.052 0"/>
     <parent link="section_5"/>
     <child link="moving_tip"/>
   </joint>
+  
+  
+  
+   <joint name="t8newfixed" type="continuous">
+    <origin rpy="-1.5707963267949 0 0" xyz="0 -0.062 0"/>
+	<axis xyz="0 -1 0"/>
+
+    <parent link="moving_tip"/>
+    <child link="movable_hidden_tip"/>
+  </joint>
+  
+  
+  
   <transmission name="trans_m1">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="m1">
