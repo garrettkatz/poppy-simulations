@@ -29,12 +29,12 @@ p.setGravity(0,0,-9)
 start_pos = [[0.11,0.11,0.08],[-0.11,0.11,0.01],[0.11,-0.11,0.01],[-0.11,-0.11,0.01]]
 counter =0
 cubeStartPos = [0,-0.25,0]
-cubeStartPos2 = [0.18,-0.20,0]
+cubeStartPos2 = [0.18,-0.20,0.01]
 Obj_list =[0,0,0,0]
 start_or = p.getQuaternionFromEuler([0,0,math.radians(270)])
 start_or2 = p.getQuaternionFromEuler([0,0,math.radians(270+30)])
 robottId2 = p.loadURDF("D:/G/poppy-muffin-master/urdfs/Pybullet_assets/random_urdfs/001/001.urdf", cubeStartPos , start_or)
-robottId3 = p.loadURDF("D:/G/poppy-muffin-master/urdfs/Pybullet_assets/random_urdfs/001/001.urdf", cubeStartPos2 , start_or2)
+robottId3 = p.loadURDF("D:/G/poppy-muffin-master/urdfs/Pybullet_assets/random_urdfs/001/001.urdf", cubeStartPos2 , start_or2 , useFixedBase=True)
 
 print(p.getJointInfo(robottId3,1))
 _link_name_to_index = {p.getBodyInfo(robottId3)[0].decode('UTF-8'): -1, }
@@ -43,20 +43,20 @@ for _id in range(p.getNumJoints(robottId3)):
     _name = p.getJointInfo(robottId3, _id)[12].decode('UTF-8')
     _link_name_to_index[_name] = _id
 #move to first position
-for i in range(50):
+#for i in range(50):
 
-    pos = p.getLinkState(robottId2,1)
-    quat = p.getMatrixFromQuaternion(pos[1])
-    print(pos[0],pos[1])
-    new_p = pos[0]
-    new_o = pos[1]
-    tar_args = get_tip_targets(new_p,quat,0.012)
-    i_k = env.inverse_kinematics([5, 7],tar_args)
-    env.goto_position(i_k,1)
+pos = p.getLinkState(robottId2,1)
+quat = p.getMatrixFromQuaternion(pos[1])
+print(pos[0],pos[1])
+new_p = pos[0]
+new_o = pos[1]
+tar_args = get_tip_targets(new_p,quat,0.012)
+i_k = env.inverse_kinematics([5, 7],tar_args)
+env.goto_position(i_k,1)
 
-    p.stepSimulation()
+    #p.stepSimulation()
 
-    time.sleep(1. / 240.)
+   # time.sleep(1. / 240.)
 #close gripper
 for i in range(50):
     m = env.close_gripper(-0.22)
@@ -115,12 +115,12 @@ for i in range(100):
     pos_obj_tuple = p.getLinkState(robottId3,1)
     pos_bot_numpy = np.array(pos_bot_tuple[0])
     pos_obj_numpy = np.array(pos_obj_tuple[0])
-    pos_obj_numpy[2]= pos_obj_numpy[2]+0.05
+    pos_obj_numpy[2]= pos_obj_numpy[2]+0.02
     Error_1 = np.sum((pos_bot_numpy - pos_obj_numpy) ** 2, axis=0)
     Errorlist.append(Error_1)
     direction =  pos_obj_numpy - pos_bot_numpy
-    new_pos_bot = tuple(pos_bot_numpy+ (direction))
-    quat = p.getMatrixFromQuaternion(pos_bot_tuple[1])
+    new_pos_bot = tuple(pos_bot_numpy+ i*0.01*(direction))
+    quat = p.getMatrixFromQuaternion(pos_obj_tuple[1])
     tar_args = get_tip_targets(new_pos_bot, quat, 0.010)
     i_k = env.inverse_kinematics([5, 7], tar_args)
     env.goto_position(i_k,1)
@@ -130,12 +130,14 @@ for i in range(100):
     pos_obj_tuple2 = p.getLinkState(robottId3, 0)
     pos_bot_numpy2 = np.array(pos_bot_tuple2[0])
     pos_obj_numpy2 = np.array(pos_obj_tuple2[0])
-    pos_obj_numpy2[2] = pos_obj_numpy2[2] + 0.05
+    pos_obj_numpy2[2] = pos_obj_numpy2[2] + 0.02
     Error_2 = np.sum((pos_bot_numpy2 - pos_obj_numpy2) ** 2, axis=0)
     #Errorlist.append(Error_2)
+    if Error_2 < Error_1:
+        continue
     direction2 = pos_obj_numpy2 - pos_bot_numpy2
     new_pos_bot2 = tuple(pos_bot_numpy2 + (direction))
-    quat2 = p.getMatrixFromQuaternion(pos_bot_tuple2[1])
+    quat2 = p.getMatrixFromQuaternion(pos_obj_tuple2[1])
     tar_args2 = get_tip_targets(new_pos_bot2, quat2, 0.010)
     i_k2 = env.inverse_kinematics([5, 7], tar_args2)
     env.goto_position(i_k2,1)
