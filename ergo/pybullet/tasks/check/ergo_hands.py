@@ -18,7 +18,7 @@ MANUALLY_GET_NEW_CAM = False
 # set it to False to double-check the camera view that you copy-pasted
 
 # this launches the simulator
-env = PoppyErgoEnv(pb.POSITION_CONTROL)
+env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
 
 # this loops until you get the camera view you want
 while MANUALLY_GET_NEW_CAM:
@@ -44,9 +44,8 @@ while MANUALLY_GET_NEW_CAM:
     input("ready...")
 
 # Copy-paste the camera parameters here to check that it worked:
-# cam = 1.2000000476837158, 3.199998140335083, -16.20000648498535, (-0.14883437752723694, 0.8789047002792358, 0.046143874526023865)
-cam = (1.2000000476837158, -2.4437904357910156e-06, -1.4000108242034912, (4.0046870708465576e-08, 0.8997313976287842, 0.37801095843315125))
-# cam = (1.0, -66.39995574951172, -18.600074768066406, (0.6922407150268555, 0.3516427278518677, 0.12549708783626556))
+# cam = (1.2000000476837158, -2.4437904357910156e-06, -1.4000108242034912, (4.0046870708465576e-08, 0.8997313976287842, 0.37801095843315125))
+cam = (1.0, 0.7999724745750427, -23.40000343322754, (-0.023880355060100555, 0.42033448815345764, 0.27178314328193665))
 
 if not MANUALLY_GET_NEW_CAM:
     pb.resetDebugVisualizerCamera(*cam)
@@ -58,12 +57,15 @@ if not MANUALLY_GET_NEW_CAM:
     print("mass", mass)
     print("inertia", inertia)
 
+    input("start moving joints...")
+
     # set angles by name
     angles = env.angle_dict(env.get_position())
     for t in range(1, 6*180):
         angles.update({
             "r_wrist_y": -t / 12, "r_wrist_x":  t / 12, "r_gripper": -t / 12,
             "l_wrist_y": t / 12, "l_wrist_x":  t / 12, "l_gripper": -t / 12,
+            "head_y": t / 12,
         })
     # for t in range(1, 2):
     #     angles.update({

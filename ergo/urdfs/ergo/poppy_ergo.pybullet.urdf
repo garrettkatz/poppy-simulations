@@ -414,6 +414,16 @@
 		</collision>
 		<mass>0.2126</mass>
 	</link>
+	<link name="camera">
+		<!-- <collision> -->
+                <!--         <!-\- positive z points along camera view direction -\-> -->
+		<!-- 	<origin xyz="0 0 .02" rpy="0 0 0"></origin> -->
+		<!-- 	<geometry> -->
+		<!-- 		<cylinder length=".025" radius=".01"/> -->
+		<!-- 	</geometry> -->
+		<!-- </collision> -->
+		<mass>0</mass>
+	</link>
 	<link name="l_shoulder">
 		<inertial>
 			<origin xyz="0.0105246491971973 0.00179805316216127 -0.00915201992957032" rpy="0 0 0"></origin>
@@ -1014,6 +1024,12 @@
 		<child link="head"></child>
 		<axis xyz="1 0 0"></axis>
 		<limit effort="1.8" upper="0.785398163397" lower="-0.10471975512" velocity="10.0"></limit>
+	</joint>
+	<joint name="head_cam" type="fixed">
+    		<origin xyz="0 .075 .025" rpy="0 0 0"></origin>
+		<parent link="head"></parent>
+		<child link="camera"></child>
+		<axis xyz="1 0 0"></axis>
 	</joint>
 	<joint name="l_shoulder_y" type="revolute">
 		<origin xyz="0.0771000000000001 0.0499999999999999 0.00399999999999997" rpy="0 0 0"></origin>
