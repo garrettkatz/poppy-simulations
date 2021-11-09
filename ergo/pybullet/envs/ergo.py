@@ -6,14 +6,16 @@ from poppy_env import PoppyEnv
 class PoppyErgoEnv(PoppyEnv):
     
     # Ergo-specific urdf loading logic
-    def load_urdf(self):
+    def load_urdf(self, use_fixed_base=False):
         fpath = os.path.dirname(os.path.abspath(__file__))
         fpath += '/../../urdfs/ergo'
         pb.setAdditionalSearchPath(fpath)
         robot_id = pb.loadURDF(
             'poppy_ergo.pybullet.urdf',
             basePosition = (0, 0, .43),
-            baseOrientation = pb.getQuaternionFromEuler((0,0,0)))
+            baseOrientation = pb.getQuaternionFromEuler((0,0,0)),
+            useFixedBase=use_fixed_base,
+        )
         return robot_id
 
     # Get mirrored version of position across left/right halves of body
