@@ -414,6 +414,16 @@
 		</collision>
 		<mass>0.2126</mass>
 	</link>
+	<link name="camera">
+		<!-- <collision> -->
+                <!--         <!-\- positive z points along camera view direction -\-> -->
+		<!-- 	<origin xyz="0 0 .02" rpy="0 0 0"></origin> -->
+		<!-- 	<geometry> -->
+		<!-- 		<cylinder length=".025" radius=".01"/> -->
+		<!-- 	</geometry> -->
+		<!-- </collision> -->
+		<mass>0</mass>
+	</link>
 	<link name="l_shoulder">
 		<inertial>
 			<origin xyz="0.0105246491971973 0.00179805316216127 -0.00915201992957032" rpy="0 0 0"></origin>
@@ -1015,6 +1025,12 @@
 		<axis xyz="1 0 0"></axis>
 		<limit effort="1.8" upper="0.785398163397" lower="-0.10471975512" velocity="10.0"></limit>
 	</joint>
+	<joint name="head_cam" type="fixed">
+    		<origin xyz="0 .075 .025" rpy="0 0 0"></origin>
+		<parent link="head"></parent>
+		<child link="camera"></child>
+		<axis xyz="1 0 0"></axis>
+	</joint>
 	<joint name="l_shoulder_y" type="revolute">
 		<origin xyz="0.0771000000000001 0.0499999999999999 0.00399999999999997" rpy="0 0 0"></origin>
 		<parent link="chest"></parent>
@@ -1074,8 +1090,6 @@
 
         <!-- Custom gripper starts here -->
         <joint name="r_wrist_y" type="revolute">
-            <!-- <origin rpy="3.14159265358979 1.5707963267949 0" xyz="-0.01 0.1 0"/> -->
-            <!-- <origin rpy="1.5707963267949 1.5707963267949 0" xyz="-.025 .145 0.06"/> -->
             <origin rpy="0 0 0" xyz="-.01 .145 0"/>
             <parent link="r_forearm"/>
             <child link="r_long_u"/>
@@ -1083,10 +1097,7 @@
             <limit effort="3.1" upper="3.14" lower="-3.14" velocity="7.0"></limit>
         </joint>
         <joint name="r_wrist_x" type="revolute">
-            <!-- <origin rpy="3.14159265358979 1.5707963267949 0" xyz="-0.01 0.1 0"/> -->
-            <!-- <origin rpy="1.5707963267949 1.5707963267949 0" xyz="-.025 .145 0.06"/> -->
-            <!-- <origin rpy="3.14159265358979 0 0" xyz="0 0.025 0"/> -->
-            <origin rpy="0 0 0" xyz="0 0.025 0"/>
+            <origin rpy="3.14159265358979 0 0" xyz="0 0.025 0"/>
             <parent link="r_long_u"/>
             <child link="r_hand"/>
             <axis xyz="1 0 0"/>
@@ -1121,7 +1132,7 @@
             <limit effort="3.1" upper="3.14" lower="-3.14" velocity="7.0"></limit>
         </joint>
         <joint name="l_wrist_x" type="revolute">
-            <origin rpy="0 0 0" xyz="0 0.025 0"/>
+            <origin rpy="3.14159265358979 0 0" xyz="0 0.025 0"/>
             <parent link="l_long_u"/>
             <child link="l_hand"/>
             <axis xyz="1 0 0"/>

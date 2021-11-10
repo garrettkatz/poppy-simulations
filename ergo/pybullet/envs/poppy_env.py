@@ -6,7 +6,7 @@ import numpy as np
 class PoppyEnv(object):
 
     # override this for urdf logic, should return robot pybullet id
-    def load_urdf(self):
+    def load_urdf(self, use_fixed_base=False):
         return 0
 
     def __init__(self,
@@ -14,7 +14,8 @@ class PoppyEnv(object):
         timestep=1/240,
         control_period=1,
         show=True,
-        step_hook=None
+        step_hook=None,
+        use_fixed_base=False,
     ):
 
         # step_hook(env, action) is called in each env.step(action)
@@ -34,7 +35,7 @@ class PoppyEnv(object):
         pb.loadURDF("plane.urdf")
         
         # use overridden loading logic
-        self.robot_id = self.load_urdf()
+        self.robot_id = self.load_urdf(use_fixed_base)
 
         self.num_joints = pb.getNumJoints(self.robot_id)
         self.joint_name, self.joint_index, self.joint_fixed = {}, {}, {}
