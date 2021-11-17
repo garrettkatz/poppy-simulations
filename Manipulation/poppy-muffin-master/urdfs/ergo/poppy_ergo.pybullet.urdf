@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="Poppy_Humanoid">
 	<link name="pelvis">
+		 <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
 		<inertial>
 			<origin xyz="-0.000134932459328483 -0.000399086261064929 0.00195556930608449" rpy="0 0 0"></origin>
 			<mass value="0.18520035953947"></mass>
