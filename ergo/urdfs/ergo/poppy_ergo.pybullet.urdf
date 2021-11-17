@@ -855,6 +855,13 @@
         </link>
         <link name="l_fixed_tip">
           <!-- comment visual placeholder to see collision shape -->
+		  <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
@@ -872,6 +879,13 @@
         </link>
         <link name="l_moving_tip">
           <!-- comment visual placeholder to see collision shape -->
+		  <contact>
+      <lateral_friction value="1.0"/>
+      <rolling_friction value="0.0"/>
+      <inertia_scaling value="3.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
