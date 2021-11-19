@@ -105,7 +105,7 @@ class PoppyEnv(object):
             name: angle_array[j] * 180/np.pi
             for j, name in enumerate(self.joint_index)}
 
-    # pypot-style command, goes to position in give duration
+    # pypot-style command, goes to target joint position with given speed
     # target is a joint angle array
     # speed is desired joint speed
     # if hang==True, wait for user enter at each timestep of motion
@@ -126,7 +126,7 @@ class PoppyEnv(object):
             if hang: input('..')
 
         return positions
-    
+
     # Run IK, accounting for fixed joints
     def inverse_kinematics(self, link_indices, target_positions, num_iters=1000):
 
