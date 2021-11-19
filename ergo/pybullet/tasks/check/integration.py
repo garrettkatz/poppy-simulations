@@ -36,7 +36,7 @@ if __name__ == "__main__":
         posObj = (0, .4, .43),
         ornObj = pb.getQuaternionFromEuler((0, 0, 1)))
 
-    input("..")
+    # input("..")
 
     # walking (Xulin, low priority)
     mc.walk_to(env,
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # input("..")
 
     # getting object positions/orientations from vision (Borui, low priority)
-    objs = vz.get_object_poses(env)    
+    objs = vz.get_object_poses(env)
     for (pos, quat) in objs: print(pos, quat)
 
     # get all possible ways to grasp an object (Akshay, high priority)
@@ -64,6 +64,7 @@ if __name__ == "__main__":
     # tweak grasp points based on vision (Borui, high priority)
     for t in range(len(targets)):
         targets[t] = vz.tweak_grip(env, targets[t])
+        break
 
     # balanced reaching (Xulin, high priority)
     for t in range(len(targets)):
