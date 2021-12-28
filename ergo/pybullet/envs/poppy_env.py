@@ -68,7 +68,7 @@ class PoppyEnv(object):
                 targetPositions = action,
                 targetVelocities = [0]*len(action),
                 positionGains = [.25]*len(action), # important for constant position accuracy
-                # maxVelocities = distance / duration,
+                #maxVelocities = distance / duration,
             )
 
         if sleep is None: sleep = self.show

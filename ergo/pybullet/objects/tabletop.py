@@ -1,7 +1,7 @@
 import os, sys
 import pybullet as pb
-
-def add_cube(position, half_extents, rgb, mass=1):
+import math
+def add_cube(position, half_extents, rgb, mass=0.1):
 
     cid = pb.createCollisionShape(
         shapeType = pb.GEOM_BOX,
@@ -20,8 +20,43 @@ def add_cube(position, half_extents, rgb, mass=1):
     )
 
     return mid
+# Updated upstream
 
-def add_box_compound(boxes, mass=1):
+def add_Obj_compound(position,half_extents, rgb,mass = 0.01):
+    cid = pb.createCollisionShape(
+        shapeType=pb.GEOM_BOX,
+        halfExtents=half_extents,
+    )
+
+    vid = pb.createVisualShape(
+        shapeType=pb.GEOM_BOX,
+        halfExtents=half_extents,
+        rgbaColor=rgb + (1,),  # alpha is opaque
+    )
+    vid2 = pb.createVisualShape(shapeType = pb.GEOM_SPHERE,
+                                radius=0.01,
+                                rgbaColor = rgb+(1,),
+                                visualFramePosition=[position[0],position[1],position[2]-half_extents[2]],
+                                )
+    obj = pb.createMultiBody(
+        baseMass=mass,
+        #baseMass=mass,
+        baseCollisionShapeIndex=cid,
+        baseVisualShapeIndex=vid,
+        linkMasses=[0.01],
+        #linkCollisionShapeIndices=cid,
+        linkVisualShapeIndices=[vid2],
+        linkPositions=[(0,0,0)],
+        linkOrientations=[(0, 0, 0, 1)],
+        linkInertialFramePositions=[position],
+        linkInertialFrameOrientations=[(0, 0, 0, 1)],
+        linkParentIndices=[[1]] ,
+        linkJointTypes=[[pb.JOINT_FIXED]],
+        linkJointAxis=[(0, 0, 0, 1)] ,
+    )
+
+    return obj
+def add_box_compound(boxes, mass=0):
 
     pos, ext, rgb = zip(*boxes)
     cids, vids = [], []
@@ -59,7 +94,12 @@ def table_position():
 def table_half_extents():
     return (.5, .2, .2)
 
-def add_table(mass=100):
+#
+def add_obj(position , urdf_path ,orn):
+    loader = pb.loadURDF(urdf_path,position,orn)
+    return loader
+# Stashed changes
+def add_table(mass=0):
     position = table_position()
     half_extents = table_half_extents()
     rgb = (.5, .5, .5)
