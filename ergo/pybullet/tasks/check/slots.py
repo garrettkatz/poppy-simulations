@@ -156,13 +156,15 @@ if __name__ == "__main__":
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
     for i in range(20):
-        slot2_pos = [d_pos_2[0],d_pos_2[1],0.65 - i*0.02]
+        slot2_pos = [d_pos_2[0],d_pos_2[1],0.65 - i*0.01]
         obj_base_pos = pb.getLinkState(disk, 1)
         move_direction = np.array(slot2_pos) - np.array(obj_base_pos[0])
-        new_p_move = np.array(pb.getLinkState(disk,1)[0]) + move_direction
+        new_p_move = np.array(pb.getLinkState(disk,0)[0]) + move_direction
         tar_args = get_tip_targets(new_p_move, quat, 0.004)
         i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
         env.goto_position(i_k, 1)
 
-
+    tar_args = get_tip_targets(new_p_move, quat, 0.012)
+    i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
+    env.goto_position(i_k, 1)
     input('.')
