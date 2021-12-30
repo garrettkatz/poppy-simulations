@@ -100,6 +100,7 @@ if __name__ == "__main__":
 
 
     d_pos = (s_pos[0], s_pos[1], s_pos[2] + dims[2]/2)
+    d_pos_2 = (s_pos_2[0], s_pos_2[1], s_pos_2[2] + dims[2]/2)
     d_ext = (dims[0]/4, dims[1]/4, dims[2]*0.75)
     disk = tt.add_Obj_compound(d_pos, d_ext, (0, 0, 1))
 
@@ -139,27 +140,27 @@ if __name__ == "__main__":
     tar_args = get_tip_targets(new_p, quat, 0.014)
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
-    tar_args = get_tip_targets(new_p, quat, 0.002)
+    tar_args = get_tip_targets(new_p, quat, 0.004)
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
     new_p[2] = new_p[2] + 0.2
     new_o = pos[1]
-    tar_args = get_tip_targets(new_p, quat, 0.002)
+    tar_args = get_tip_targets(new_p, quat, 0.004)
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
 
     tar_pos_orn = pb.getBasePositionAndOrientation(4)
     tar_pos = tar_pos_orn[0]
     d_pos = (tar_pos[0], tar_pos[1], new_p[2])
-    tar_args = get_tip_targets(d_pos,quat,0.002)
+    tar_args = get_tip_targets(d_pos,quat,0.004)
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
     for i in range(20):
-        slot2_pos = [s_pos_2[0],s_pos_2[1],.55]
+        slot2_pos = [d_pos_2[0],d_pos_2[1],0.65 - i*0.02]
         obj_base_pos = pb.getLinkState(disk, 1)
         move_direction = np.array(slot2_pos) - np.array(obj_base_pos[0])
-        new_p_move = np.array(pb.getLinkState(disk,0)[0]) + 0.5*move_direction
-        tar_args = get_tip_targets(new_p_move, quat, 0.002)
+        new_p_move = np.array(pb.getLinkState(disk,1)[0]) + move_direction
+        tar_args = get_tip_targets(new_p_move, quat, 0.004)
         i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
         env.goto_position(i_k, 1)
 
