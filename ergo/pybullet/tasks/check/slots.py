@@ -17,6 +17,24 @@ import tabletop as tt
 import motor_control as mc
 import vision as vz
 import grasping as gr
+
+import math as m
+def Rx(theta):
+    return np.matrix([[1, 0, 0],
+                      [0, m.cos(theta), -m.sin(theta)],
+                      [0, m.sin(theta), m.cos(theta)]])
+
+
+def Ry(theta):
+    return np.matrix([[m.cos(theta), 0, m.sin(theta)],
+                      [0, 1, 0],
+                      [-m.sin(theta), 0, m.cos(theta)]])
+
+
+def Rz(theta):
+    return np.matrix([[m.cos(theta), -m.sin(theta), 0],
+                      [m.sin(theta), m.cos(theta), 0],
+                      [0, 0, 1]])
 def get_tip_targets(p, q, d):
     m = q
     t1 = p[0]-d*m[0], p[1]-d*m[3], p[2]-d*m[6]
@@ -83,7 +101,7 @@ if __name__ == "__main__":
 
     d_pos = (s_pos[0], s_pos[1], s_pos[2] + dims[2]/2)
     d_ext = (dims[0]/4, dims[1]/4, dims[2]*0.75)
-    disk = tt.add_cube(d_pos, d_ext, (0, 0, 1))
+    disk = tt.add_Obj_compound(d_pos, d_ext, (0, 0, 1))
 
     angles = env.get_position()
    # input('.')
@@ -100,10 +118,10 @@ if __name__ == "__main__":
             angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
             env.set_position(env.angle_array(angles))
         pos = pb.getBasePositionAndOrientation(disk)
-
-        quat = pb.getMatrixFromQuaternion(pos[1])
+        quat = pb.getMatrixFromQuaternion(pb.getBasePositionAndOrientation(disk)[1])
         print(pos[0], pos[1])
         new_p = list(pos[0])
+        #new_p = list(d_pos)
         new_p[2] = new_p[2] + 0.1
         new_o = pos[1]
         tar_args = get_tip_targets(new_p,quat,0.014)
@@ -136,6 +154,14 @@ if __name__ == "__main__":
     tar_args = get_tip_targets(d_pos,quat,0.002)
     i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
     env.goto_position(i_k, 1)
+    for i in range(20):
+        slot2_pos = [s_pos_2[0],s_pos_2[1],.55]
+        obj_base_pos = pb.getLinkState(disk, 1)
+        move_direction = np.array(slot2_pos) - np.array(obj_base_pos[0])
+        new_p_move = np.array(pb.getLinkState(disk,0)[0]) + 0.5*move_direction
+        tar_args = get_tip_targets(new_p_move, quat, 0.002)
+        i_k = mc.balanced_reach_ik(env, tar_args, arm="right")
+        env.goto_position(i_k, 1)
 
 
     input('.')

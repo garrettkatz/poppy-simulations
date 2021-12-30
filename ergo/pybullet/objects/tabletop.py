@@ -27,32 +27,36 @@ def add_Obj_compound(position,half_extents, rgb,mass = 0.01):
         shapeType=pb.GEOM_BOX,
         halfExtents=half_extents,
     )
-
+    cid2 = pb.createCollisionShape(
+        shapeType=pb.GEOM_BOX,
+        halfExtents=half_extents,
+    )
     vid = pb.createVisualShape(
         shapeType=pb.GEOM_BOX,
         halfExtents=half_extents,
         rgbaColor=rgb + (1,),  # alpha is opaque
     )
-    vid2 = pb.createVisualShape(shapeType = pb.GEOM_SPHERE,
-                                radius=0.01,
-                                rgbaColor = rgb+(1,),
-                                visualFramePosition=[position[0],position[1],position[2]-half_extents[2]],
+    vid2 = pb.createVisualShape(shapeType = pb.GEOM_BOX,
+                                halfExtents=[half_extents[0],half_extents[1],0.001],
+                                rgbaColor = (0,1,1)+(1,),
+                                #visualFramePosition=[position[0],position[1],position[2]-half_extents[2]],
                                 )
     obj = pb.createMultiBody(
         baseMass=mass,
+        basePosition=position,
         #baseMass=mass,
-        baseCollisionShapeIndex=cid,
-        baseVisualShapeIndex=vid,
-        linkMasses=[0.01],
-        #linkCollisionShapeIndices=cid,
-        linkVisualShapeIndices=[vid2],
-        linkPositions=[(0,0,0)],
-        linkOrientations=[(0, 0, 0, 1)],
-        linkInertialFramePositions=[position],
-        linkInertialFrameOrientations=[(0, 0, 0, 1)],
-        linkParentIndices=[[1]] ,
-        linkJointTypes=[[pb.JOINT_FIXED]],
-        linkJointAxis=[(0, 0, 0, 1)] ,
+        #baseCollisionShapeIndex=cid,
+        #baseVisualShapeIndex=vid,
+        linkMasses=[0.01,0.001],
+        linkCollisionShapeIndices=[cid,cid2],
+        linkVisualShapeIndices=[vid,vid2],
+        linkPositions=[[0,0,0],[0,0,0-half_extents[2]]],
+        linkOrientations=[(0, 0, 0, 1),(0, 0, 0, 1)],
+        linkInertialFramePositions=[[0,0,0],[0,0,0]],
+        linkInertialFrameOrientations=[(0, 0, 0, 1),(0, 0, 0, 1)],
+        linkParentIndices=[0,0] ,
+        linkJointTypes=[pb.JOINT_FIXED,pb.JOINT_FIXED],
+        linkJointAxis=[(0, 0, 0, 1),(0, 0, 0, 1)] ,
     )
 
     return obj
