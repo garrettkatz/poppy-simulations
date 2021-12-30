@@ -29,7 +29,7 @@ def add_Obj_compound(position,half_extents, rgb,mass = 0.01):
     )
     cid2 = pb.createCollisionShape(
         shapeType=pb.GEOM_BOX,
-        halfExtents=half_extents,
+        halfExtents=[half_extents[0],half_extents[1],0.001],
     )
     vid = pb.createVisualShape(
         shapeType=pb.GEOM_BOX,
