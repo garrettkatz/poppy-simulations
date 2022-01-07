@@ -19,6 +19,6 @@ def balanced_reach_ik(env, tip_targets, arm):
     waist_position = pb.getLinkState(env.robot_id, waist_index)[0]
     target_positions = tip_targets + (neck_position, waist_position)
 
-    angles = env.inverse_kinematics(link_indices, target_positions, num_iters=15000)
+    angles = env.inverse_kinematics(link_indices, target_positions, num_iters=2000)
 
     return angles
