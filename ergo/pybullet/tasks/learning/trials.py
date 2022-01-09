@@ -4,7 +4,7 @@ from planning import Planner
 from levenshtein import lvd
 import domain
 
-def run_experiment(demo, capacity, consolidation_rate, search_depth, max_rollouts, num_trials):
+def run_experiment(demo, capacity, consolidation_rate, max_rollouts, num_trials):
 
     # get intermediate demo states
     s = domain.initial_state(num_slots=4, num_disks=8)
@@ -37,7 +37,6 @@ def run_experiment(demo, capacity, consolidation_rate, search_depth, max_rollout
         plan, stats = Planner(domain, wm, ltm).landmark_search(
             initial_state = states[0],
             goal_state = states[-1],
-            search_depth = search_depth,
             max_rollouts = max_rollouts,
             max_actions=2*len(demo))
     
@@ -58,7 +57,6 @@ if __name__ == "__main__":
     demo = demos["unstructured"]["p"]
     capacity = 7
     consolidation_rate = .2
-    search_depth = len(demo)
     max_rollouts = 100
     trials_per_block = 1
     num_blocks = 25
@@ -73,7 +71,7 @@ if __name__ == "__main__":
 
         all_results = []
         for rep in range(num_repetitions):
-            results = run_experiment(demo, capacity, consolidation_rate, search_depth, max_rollouts, num_trials)
+            results = run_experiment(demo, capacity, consolidation_rate, max_rollouts, num_trials)
             all_results.append(results)
     
         with open("trial_results.pkl","wb") as f: pk.dump(all_results, f)
@@ -132,6 +130,7 @@ if __name__ == "__main__":
         pt.ylabel("Runtime (s)")
 
         pt.subplot(1,numplots,3)
+        pt.plot((all_dists[0], all_dists[-1]), (all_times[0], all_times[-1]), 'k--')
         pt.plot(all_dists, all_times, 'ko-')
         for b in [1] + list(range(5,len(blocks),5)):
             pt.text(all_dists[b] - 1, all_times[b] + 0.0025, str(b))

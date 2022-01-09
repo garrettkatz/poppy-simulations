@@ -10,7 +10,7 @@ class Planner:
         self.ltm = ltm
 
     # pure recall
-    def pure_recall(self, initial_state, goal_state, search_depth=0, max_rollouts=0, max_actions=0):
+    def pure_recall(self, initial_state, goal_state, max_rollouts=0, max_actions=0):
         state = initial_state
         plan = []
 
@@ -27,7 +27,7 @@ class Planner:
         return plan, stats
 
     # random search to next state
-    def landmark_search(self, initial_state, goal_state, search_depth=0, max_rollouts=0, max_actions=0):
+    def landmark_search(self, initial_state, goal_state, max_rollouts=0, max_actions=0):
 
         recalled_states = tuple(self.ltm.keys())
         recalled_indexs = tuple(self.ltm[state][1] for state in recalled_states)
@@ -45,7 +45,7 @@ class Planner:
             best_subplan, best_substate = None, None
             for r in range(max_rollouts):
                 subplan, substate = [], state
-                for i in range(min(search_depth, max_actions - len(plan))):
+                for i in range(max_actions - len(plan)):
                     if substate == landmark: break
                     if best_subplan is not None and len(subplan) > len(best_subplan): break
                     action = random.choice(self.domain.valid_actions(substate))
@@ -59,7 +59,7 @@ class Planner:
                     best_subplan, best_substate = subplan, substate
 
                 total_rollouts += 1
-                if len(best_subplan) == 1: break
+                if len(best_subplan) == 0: break
 
             plan += best_subplan
             state = best_substate
