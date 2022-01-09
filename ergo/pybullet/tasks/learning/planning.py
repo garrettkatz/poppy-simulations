@@ -47,6 +47,7 @@ class Planner:
                 subplan, substate = [], state
                 for i in range(min(search_depth, max_actions - len(plan))):
                     if substate == landmark: break
+                    if best_subplan is not None and len(subplan) > len(best_subplan): break
                     action = random.choice(self.domain.valid_actions(substate))
                     substate = self.domain.perform(action, substate)
                     subplan.append(action)

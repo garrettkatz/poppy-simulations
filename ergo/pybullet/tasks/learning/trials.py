@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     num_trials = num_blocks * trials_per_block
 
-    runexp = False
+    runexp = True
     showresults = True
 
     if runexp:
