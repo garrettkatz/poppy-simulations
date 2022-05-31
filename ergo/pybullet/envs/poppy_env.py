@@ -82,6 +82,20 @@ class PoppyEnv(object):
         else:
             for _ in range(self.control_period):
                 pb.stepSimulation()
+
+    # base position/orientation and velocity/angular
+    def get_base(self):
+        pos, orn = pb.getBasePositionAndOrientation(self.robot_id)
+        vel, ang = pb.getBaseVelocity(self.robot_id)
+        return pos, orn, vel, ang
+    def set_base(self, pos=None, orn=None, vel=None, ang=None):
+        _pos, _orn, _vel, _ang = self.get_base()
+        if pos == None: pos = _pos
+        if orn == None: orn = _orn
+        if vel == None: vel = _vel
+        if ang == None: ang = _ang
+        pb.resetBasePositionAndOrientation(self.robot_id, pos, orn)
+        pb.resetBaseVelocity(self.robot_id, vel, ang)
     
     # get/set joint angles as np.array
     def get_position(self):
