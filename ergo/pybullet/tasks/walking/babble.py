@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     traj_len = 2
 
-    num_episodes = 1000
+    num_episodes = 100000
     num_steps = 1
 
     s_sigma = 0.01
@@ -40,6 +40,7 @@ if __name__ == "__main__":
             tr.nn.Linear(num_hid, num_out),
         )
         opt = tr.optim.SGD(net.parameters(), lr=learning_rate)
+        # opt = tr.optim.Adam(net.parameters(), lr=learning_rate)
     
         rewards = np.empty((num_episodes, num_steps))
         sl_losses = np.empty((num_episodes, num_steps))
