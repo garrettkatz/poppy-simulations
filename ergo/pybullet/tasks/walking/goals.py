@@ -8,9 +8,10 @@ from ergo import PoppyErgoEnv
 
 def sample_goal(env):
     pos, orn, vel, ang = env.get_base()
-    pos = np.array(pos) + np.random.uniform((-.2, 0, 0), (.2, .2, 0))
-    orn = pb.getQuaternionFromEuler((0, 0, np.random.rand()*np.pi + np.pi/2))
-    vel = np.array(vel) + np.random.randn(3) * np.array([0.1, 0.1, 0])
+    pos = np.array(pos) + np.random.uniform((-.1, 0, 0), (.1, .1, 0))
+    orn = pb.getQuaternionFromEuler((0, 0, np.random.rand()*np.pi + np.pi/3))
+    # vel = np.array(vel) + np.random.randn(3) * np.array([0.1, 0.1, 0])
+    vel = np.array(vel)
     ang = np.zeros(3)
     return tuple(map(tuple, (pos, orn, vel, ang)))
 
