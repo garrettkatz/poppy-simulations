@@ -15,6 +15,9 @@ if __name__ == "__main__":
     show = False
     dotrain = True
 
+    # show = True
+    # dotrain = False
+
     traj_len = 2
 
     num_episodes = 100000
@@ -24,21 +27,22 @@ if __name__ == "__main__":
     a_sigma = 0.01
     learning_rate = 0.0005
 
+    # launches the simulator
+    env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=show)
+    env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
+
+    num_inp = len(env.joint_index) + 26
+    num_hid = 64
+    num_out = traj_len*len(env.joint_index)
+
+    net = tr.nn.Sequential(
+        tr.nn.Linear(num_inp, num_hid),
+        tr.nn.LeakyReLU(),
+        tr.nn.Linear(num_hid, num_out),
+    )
+
     if dotrain:
 
-        # launches the simulator
-        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=show)
-        env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
-    
-        num_inp = len(env.joint_index) + 26
-        num_hid = 64
-        num_out = traj_len*len(env.joint_index)
-
-        net = tr.nn.Sequential(
-            tr.nn.Linear(num_inp, num_hid),
-            tr.nn.LeakyReLU(),
-            tr.nn.Linear(num_hid, num_out),
-        )
         opt = tr.optim.SGD(net.parameters(), lr=learning_rate)
         # opt = tr.optim.Adam(net.parameters(), lr=learning_rate)
     
@@ -82,9 +86,8 @@ if __name__ == "__main__":
     
             print(f"ep {episode}: rl {rewards[episode].mean():e}, sl {sl_losses[episode].mean():e}")
     
-        env.close()
-    
         np.savez("babble.npz", rewards=rewards, sl_losses=sl_losses)
+        tr.save(net.state_dict(), "babble.pt")
 
     npz = np.load("babble.npz")
     rewards, sl_losses = npz["rewards"], npz["sl_losses"]
@@ -94,5 +97,27 @@ if __name__ == "__main__":
     pt.subplot(1,2,2)
     pt.plot(sl_losses)
     pt.show()
+
+    net.load_state_dict(tr.load("babble.pt"))
+    net.eval()
+
+    env.reset()
+    env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
+
+    input("Enter to move robot")
+
+    for step in range(num_steps):
+
+        old_base = env.get_base()
+        g = sample_goal(env)
+        sg = np.concatenate((env.get_position(),) + old_base + g)
+        a = net(tr.tensor(sg).float())
+
+        traj = a.detach().numpy().reshape((traj_len, -1))
+        for target in traj: env.goto_position(target)
+
+    env.close()
+    
+
             
 
