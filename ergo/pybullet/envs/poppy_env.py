@@ -122,12 +122,13 @@ class PoppyEnv(object):
     # pypot-style command, goes to target joint position with given speed
     # target is a joint angle array
     # speed is desired joint speed
+    # duration takes precedence over speed if not None
     # if hang==True, wait for user enter at each timestep of motion
-    def goto_position(self, target, speed=1., hang=False):
+    def goto_position(self, target, speed=1., duration=None, hang=False):
 
         current = self.get_position()
         distance = np.sum((target - current)**2)**.5
-        duration = distance / speed
+        if duration == None: duration = distance / speed
 
         num_steps = int(duration / (self.timestep * self.control_period) + 1)
         weights = np.linspace(0, 1, num_steps).reshape(-1,1)

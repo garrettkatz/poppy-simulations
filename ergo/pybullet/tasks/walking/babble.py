@@ -19,6 +19,7 @@ if __name__ == "__main__":
     dotrain = True
 
     traj_len = 2
+    duration = 0.25
 
     num_updates = 500
     num_episodes = 10
@@ -69,7 +70,7 @@ if __name__ == "__main__":
                     log_prob = dst.log_prob(a).sum()
         
                     traj = a.detach().numpy().reshape((traj_len, -1))
-                    for target in traj: env.goto_position(target)
+                    for target in traj: env.goto_position(target, duration=duration)
                     new_base = env.get_base()
         
                     reward = np.exp(-goal_distance(new_base, g))
@@ -111,7 +112,8 @@ if __name__ == "__main__":
         net.load_state_dict(tr.load("babble.pt"))
         net.eval()
     
-        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=True)
+        #env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=True)
+        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=True)
         env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
     
         for step in range(num_steps):
@@ -122,7 +124,7 @@ if __name__ == "__main__":
             a = net(tr.tensor(sg).float())
     
             traj = a.detach().numpy().reshape((traj_len, -1))
-            for target in traj: env.goto_position(target)
+            for target in traj: env.goto_position(target, duration=duration)
     
         env.close()
     
