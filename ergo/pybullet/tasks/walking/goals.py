@@ -43,17 +43,24 @@ if __name__ == "__main__":
     # launches the simulator
     env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False)
     env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
+    base = env.get_base()
 
     # visualize goal distribution
     import matplotlib.pyplot as pt
     
     pt.plot([.1,.1,-.1,-.1,.1], [.1,-.1,-.1,.1,.1], 'k--')
+    dists = []
     for samp in range(200):
-        pos, orn, vel, ang = sample_goal(env)
+        goal = sample_goal(env)
+        pos, orn, vel, ang = goal
+        dists.append(goal_distance(base, goal))
         pt.plot([pos[0]], [pos[1]], 'ko')
         pt.arrow(pos[0], pos[1], vel[0], vel[1], color='b')
+
+    print(f"average goal dist from initial base: {np.mean(dists)}")
+
     pt.show()
-    input('.')
+
 
     # get initial base
     init_base = env.get_base()

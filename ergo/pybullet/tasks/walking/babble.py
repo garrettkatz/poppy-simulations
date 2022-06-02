@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     s_sigma = 0.01
     a_sigma = 0.01
-    learning_rate = 0.0005
+    learning_rate = 0.0001
 
     num_joints = 36
     num_inp = num_joints + 26
@@ -60,10 +60,11 @@ if __name__ == "__main__":
                 for step in range(num_steps):
         
                     old_base = env.get_base()
+                    old_joints = env.get_position()
                     g = sample_goal(env)
-                    sg = np.concatenate((env.get_position(),) + old_base + g)
-                    inp = sg + np.random.randn(len(sg)) * s_sigma
-        
+
+                    sg = np.concatenate((old_joints,) + old_base + g)
+                    inp = sg + np.random.randn(len(sg)) * s_sigma        
                     out = net(tr.tensor(inp).float())
                     dst = tr.distributions.normal.Normal(out, a_sigma)
                     a = dst.sample()
@@ -74,10 +75,11 @@ if __name__ == "__main__":
                     new_base = env.get_base()
         
                     reward = np.exp(-goal_distance(new_base, g))
+                    # reward =  1 / (1 + goal_distance(new_base, g))
                     rl_loss = -reward * log_prob
                     rl_loss.backward()
         
-                    sn = np.concatenate((env.get_position(),) + old_base + new_base)
+                    sn = np.concatenate((old_joints,) + old_base + new_base)
                     sl_loss = tr.sum((net(tr.tensor(sn).float()) - a.detach())**2)
                     sl_loss.backward()
         
@@ -112,8 +114,8 @@ if __name__ == "__main__":
         net.load_state_dict(tr.load("babble.pt"))
         net.eval()
     
-        #env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=True)
-        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=True)
+        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False, show=True)
+        # env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=True)
         env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
     
         for step in range(num_steps):
