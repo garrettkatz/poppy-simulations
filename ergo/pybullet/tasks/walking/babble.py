@@ -21,8 +21,8 @@ if __name__ == "__main__":
     traj_len = 2
     duration = 0.25
 
-    num_updates = 500
-    num_episodes = 10
+    num_updates = 1000
+    num_episodes = 20
     num_steps = 1
     save_period = 5
 
