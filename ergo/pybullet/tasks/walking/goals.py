@@ -7,13 +7,31 @@ sys.path.append(os.path.join('..', '..', 'envs'))
 from ergo import PoppyErgoEnv
 
 def sample_goal(env):
-    pos, orn, vel, ang = env.get_base()
-    pos = np.array(pos) + np.random.uniform((-.1, 0, 0), (.1, .1, 0))
-    orn = pb.getQuaternionFromEuler((0, 0, np.random.rand()*np.pi + np.pi/3))
-    # vel = np.array(vel) + np.random.randn(3) * np.array([0.1, 0.1, 0])
-    vel = np.array(vel)
-    ang = np.zeros(3)
-    return tuple(map(tuple, (pos, orn, vel, ang)))
+
+    # uniform new position in small circle in front of robot
+    R = 0.1
+    r = np.random.rand() * R
+    th = np.random.rand() * 2*np.pi
+    dx, dy = r*np.cos(th), r*np.sin(th) - R
+    dpos = (dx, dy, 0)
+
+    # orientation aligned with change in position
+    dorn = pb.getQuaternionFromEuler((0, 0, np.arctan2(dy, dx)))
+
+    # transform relative to current robot position
+    bpos, born, _, _ = env.get_base()
+    pos, orn = pb.multiplyTransforms(bpos, born, dpos, dorn)
+
+    # velocity aligned with change in position
+    vel = np.array(pos) - np.array(bpos)
+
+    # normalize max speed proportional to change in position and at most 0.1
+    vel *= np.random.rand() * 0.1 / (2*R)
+    
+    # no angular velocity
+    ang = (0,)*3
+
+    return pos, orn, tuple(vel), ang
 
 def goal_distance(base1, base2):
     base1 = np.concatenate(tuple(map(np.array, base1)))
@@ -25,6 +43,16 @@ if __name__ == "__main__":
     # launches the simulator
     env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False)
     env.set_base(orn = pb.getQuaternionFromEuler((0,0,np.pi)))
+
+    # visualize goal distribution
+    import matplotlib.pyplot as pt
+    
+    pt.plot([.1,.1,-.1,-.1,.1], [.1,-.1,-.1,.1,.1], 'k--')
+    for samp in range(200):
+        pos, orn, vel, ang = sample_goal(env)
+        pt.plot([pos[0]], [pos[1]], 'ko')
+        pt.arrow(pos[0], pos[1], vel[0], vel[1], color='b')
+    pt.show()
     input('.')
 
     # get initial base

@@ -422,7 +422,11 @@
 		<!-- 		<cylinder length=".025" radius=".01"/> -->
 		<!-- 	</geometry> -->
 		<!-- </collision> -->
-		<mass>0</mass>
+		<inertial>
+			<origin xyz="0 0 0" rpy="0 0 0"></origin>
+			<mass value="0.06"></mass>
+			<inertia ixx="1E-06" ixy="0" ixz="0" iyy="1E-06" iyz="0" izz="1E-06"></inertia>
+		</inertial>
 	</link>
 	<link name="l_shoulder">
 		<inertial>
