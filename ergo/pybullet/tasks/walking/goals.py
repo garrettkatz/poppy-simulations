@@ -34,9 +34,17 @@ def sample_goal(env):
     return pos, orn, tuple(vel), ang
 
 def goal_distance(base1, base2):
-    base1 = np.concatenate(tuple(map(np.array, base1)))
-    base2 = np.concatenate(tuple(map(np.array, base2)))
-    return np.sum((base1 - base2)**2)
+    # base1 = np.concatenate(tuple(map(np.array, base1)))
+    # base2 = np.concatenate(tuple(map(np.array, base2)))
+    # return np.sum((base1 - base2)**2)
+
+    pos1, orn1, vel1, ang1 = base1
+    pos2, orn2, vel2, ang2 = base1
+    dorn = pb.getDifferenceQuaternion(orn1, orn2)
+    _, angle = pb.getAxisAngleFromQuaternion(dorn)
+    base1 = np.concatenate((pos1, vel1, ang1))
+    base2 = np.concatenate((pos2, vel2, ang2))
+    return np.sum((base1 - base2)**2) + angle**2
 
 if __name__ == "__main__":
 

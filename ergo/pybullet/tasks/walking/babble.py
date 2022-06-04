@@ -10,6 +10,12 @@ from ergo import PoppyErgoEnv
 
 from goals import sample_goal, goal_distance
 
+def encode(joints, base, goal):
+    # sin/cos to avoid input discontinuity
+    s = np.sin(old_joints)
+    c = np.cos(old_joints)
+    return np.concatenate((s,c) + base + goal)
+
 if __name__ == "__main__":
 
     show_train = False
@@ -31,7 +37,8 @@ if __name__ == "__main__":
     learning_rate = 0.0001
 
     num_joints = 36
-    num_inp = num_joints + 26
+    num_base_coords = (3+4+3+3)*2
+    num_inp = 2*num_joints + num_base_coords
     num_hid = 128
     num_out = traj_len*num_joints
 
@@ -63,7 +70,7 @@ if __name__ == "__main__":
                     old_joints = env.get_position()
                     g = sample_goal(env)
 
-                    sg = np.concatenate((old_joints,) + old_base + g)
+                    sg = encode(old_joints, old_base, g)
                     inp = sg + np.random.randn(len(sg)) * s_sigma        
                     out = net(tr.tensor(inp).float())
                     dst = tr.distributions.normal.Normal(out, a_sigma)
@@ -74,12 +81,13 @@ if __name__ == "__main__":
                     for target in traj: env.goto_position(target, duration=duration)
                     new_base = env.get_base()
         
-                    reward = np.exp(-goal_distance(new_base, g))
+                    # reward = np.exp(-goal_distance(new_base, g)) - 1
                     # reward =  1 / (1 + goal_distance(new_base, g))
+                    reward = -goal_distance(new_base, g)**.5 # non-zero negative rewards for large distance
                     rl_loss = -reward * log_prob
                     rl_loss.backward()
         
-                    sn = np.concatenate((old_joints,) + old_base + new_base)
+                    sn = encode(old_joints, old_base, new_base)
                     sl_loss = tr.sum((net(tr.tensor(sn).float()) - a.detach())**2)
                     sl_loss.backward()
         
@@ -122,7 +130,7 @@ if __name__ == "__main__":
     
             old_base = env.get_base()
             g = sample_goal(env)
-            sg = np.concatenate((env.get_position(),) + old_base + g)
+            sg = encode(env.get_position(), old_base, g)
             a = net(tr.tensor(sg).float())
     
             traj = a.detach().numpy().reshape((traj_len, -1))
