@@ -12,8 +12,8 @@ from goals import sample_goal, goal_distance
 
 def encode(joints, base, goal):
     # sin/cos to avoid input discontinuity
-    s = np.sin(old_joints)
-    c = np.cos(old_joints)
+    s = np.sin(joints)
+    c = np.cos(joints)
     return np.concatenate((s,c) + base + goal)
 
 if __name__ == "__main__":
@@ -28,13 +28,13 @@ if __name__ == "__main__":
     duration = 0.25
 
     num_updates = 1000
-    num_episodes = 20
+    num_episodes = 30
     num_steps = 1
     save_period = 5
 
     s_sigma = 0.01
     a_sigma = 0.01
-    learning_rate = 0.0001
+    learning_rate = 0.00005
 
     num_joints = 36
     num_base_coords = (3+4+3+3)*2
@@ -81,9 +81,9 @@ if __name__ == "__main__":
                     for target in traj: env.goto_position(target, duration=duration)
                     new_base = env.get_base()
         
-                    # reward = np.exp(-goal_distance(new_base, g)) - 1
-                    # reward =  1 / (1 + goal_distance(new_base, g))
-                    reward = -goal_distance(new_base, g)**.5 # non-zero negative rewards for large distance
+                    # reward = np.exp(-goal_distance(new_base, g)) - 1 # non-zero negative rewards for large distance
+                    reward =  1 / (1 + goal_distance(new_base, g))
+                    # reward = -goal_distance(new_base, g)**.5 # non-zero negative rewards for large distance
                     rl_loss = -reward * log_prob
                     rl_loss.backward()
         
@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 np.savez("babble.npz", rewards=rewards, sl_losses=sl_losses)
                 tr.save(net.state_dict(), "babble.pt")
 
-            print(f"{update}/{num_updates}: rl {rewards[update].mean():e}, sl {sl_losses[update].mean():e}")
+            print(f"{update}/{num_updates}: rl {rewards[update].mean():e}>={rewards[update].min():e}, sl {sl_losses[update].mean():e}")
             
         np.savez("babble.npz", rewards=rewards, sl_losses=sl_losses)
         tr.save(net.state_dict(), "babble.pt")
@@ -135,7 +135,9 @@ if __name__ == "__main__":
     
             traj = a.detach().numpy().reshape((traj_len, -1))
             for target in traj: env.goto_position(target, duration=duration)
-    
+
+        for t in range(100): env.step()
+
         env.close()
     
     

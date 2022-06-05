@@ -39,14 +39,24 @@ def goal_distance(base1, base2):
     # return np.sum((base1 - base2)**2)
 
     pos1, orn1, vel1, ang1 = base1
-    pos2, orn2, vel2, ang2 = base1
+    pos2, orn2, vel2, ang2 = base2
     dorn = pb.getDifferenceQuaternion(orn1, orn2)
-    _, angle = pb.getAxisAngleFromQuaternion(dorn)
+    axis, angle = pb.getAxisAngleFromQuaternion(dorn)
     base1 = np.concatenate((pos1, vel1, ang1))
     base2 = np.concatenate((pos2, vel2, ang2))
     return np.sum((base1 - base2)**2) + angle**2
 
 if __name__ == "__main__":
+
+    # double check difference quat logic
+    # orn1 = pb.getQuaternionFromEuler((0, 0, np.pi/2))
+    # orn2 = pb.getQuaternionFromEuler((0, np.pi/2, 0))
+    # dorn = pb.getDifferenceQuaternion(orn1, orn2)
+    # axis, angle = pb.getAxisAngleFromQuaternion(dorn)
+    # print(axis)
+    # print(angle)
+    # print(np.pi/3 - np.pi/2)
+    # input('.')
 
     # launches the simulator
     env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=False)
