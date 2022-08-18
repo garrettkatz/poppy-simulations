@@ -66,7 +66,7 @@ if __name__ == "__main__":
     X_axis_plot = []
     Y_axis_plot = []
     # slot
-    for h in range(100):
+    for h in range(1000):
         dims = np.array([.02, .04, .1])
         pos, ext = slot_arrays(dims/2, dims/2 + np.array([.01, .01, 0]))
         rgb = [(.75, .25, .25)]*4
@@ -165,6 +165,7 @@ if __name__ == "__main__":
         p1 = np.array(pb.getLinkState(disk,0)[0])
         p2 = np.array(d_pos_2)
         Error = np.sum((p1 - p2) ** 2, axis=0)
+
         Error_distance = m.sqrt(Error)
         Error_list.append(Error)
         Error_dist_list.append(Error_distance)
@@ -173,12 +174,14 @@ if __name__ == "__main__":
         pb.removeBody(slot)
 
     import matplotlib.pyplot as plt
-    fig,axes = plt.subplots(2)
+
+    fig, axes = plt.subplots(2)
     fig.suptitle('Error Plot')
-    axes[0].set(xlabel = 'Position - X Coordinate' , ylabel = 'sum Sq error')
+    axes[0].set(xlabel='Position - X Coordinate', ylabel='sum Sq error')
     axes[0].scatter(X_axis_plot, Error_list)
-    axes[1].set(xlabel='Position - Y Coordinate', ylabel = 'sum Sq error')
-    axes[1].scatter(Y_axis_plot,Error_list)
+    axes[1].set(xlabel='Position - Y Co'
+                       'ordinate', ylabel='sum Sq error')
+    axes[1].scatter(Y_axis_plot, Error_list)
     plt.tight_layout()
     plt.show()
     plt.savefig("ErrorPlot.png")

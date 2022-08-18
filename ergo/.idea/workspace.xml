@@ -20,11 +20,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5554affb-00b4-4abc-b79a-35f3506ebad6" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/PickNPlace.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Manipulation/poppy-muffin-master/urdfs/ergo/new 4.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Manipulation/poppy-muffin-master/urdfs/ergo/raidstuff.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pybullet/objects/tabletop.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/objects/tabletop.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/urdfs/ergo/poppy_ergo.pybullet.urdf" beforeDir="false" afterPath="$PROJECT_DIR$/urdfs/ergo/poppy_ergo.pybullet.urdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/envs/poppy_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/envs/poppy_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/tasks/check/ErrorPlot.png" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/check/ErrorPlot.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/tasks/check/slots.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/check/slots.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,7 +49,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Downloads/poppy-simulations-main" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunManager" selected="Python.PickNPlace">
@@ -126,52 +125,29 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="669" y="98" key="#get_image" timestamp="1636567578418">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="2660" y="275" key="FileChooserDialogImpl" timestamp="1654559729056">
+      <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state x="669" y="98" key="#get_image/0.0.1920.1040@0.0.1920.1040" timestamp="1636567578418" />
-    <state width="1899" height="251" key="GridCell.Tab.0.bottom" timestamp="1637115002527">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="2660" y="275" key="FileChooserDialogImpl/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1654559729056" />
+    <state width="1899" height="281" key="GridCell.Tab.0.bottom" timestamp="1654286331220">
+      <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1899" height="251" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1637115002527" />
-    <state width="1899" height="251" key="GridCell.Tab.0.center" timestamp="1637115002527">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state width="1899" height="281" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1654286331220" />
+    <state width="1899" height="281" key="GridCell.Tab.0.center" timestamp="1654286331219">
+      <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1899" height="251" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1637115002527" />
-    <state width="1899" height="251" key="GridCell.Tab.0.left" timestamp="1637115002527">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state width="1899" height="281" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1654286331219" />
+    <state width="1899" height="281" key="GridCell.Tab.0.left" timestamp="1654286331219">
+      <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1899" height="251" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1637115002527" />
-    <state width="1899" height="251" key="GridCell.Tab.0.right" timestamp="1637115002527">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state width="1899" height="281" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1654286331219" />
+    <state width="1899" height="281" key="GridCell.Tab.0.right" timestamp="1654286331220">
+      <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1899" height="251" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1637115002527" />
-    <state width="1899" height="251" key="GridCell.Tab.1.bottom" timestamp="1637115013270">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state width="1899" height="251" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1637115013270" />
-    <state width="1899" height="251" key="GridCell.Tab.1.center" timestamp="1637115013270">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state width="1899" height="251" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1637115013270" />
-    <state width="1899" height="251" key="GridCell.Tab.1.left" timestamp="1637115013270">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state width="1899" height="251" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1637115013270" />
-    <state width="1899" height="251" key="GridCell.Tab.1.right" timestamp="1637115013270">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state width="1899" height="251" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1637115013270" />
-    <state x="461" y="165" key="SettingsEditor" timestamp="1635877304920">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state x="461" y="165" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1635877304920" />
-    <state x="524" y="249" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1637081187054">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state x="524" y="249" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2/0.0.1920.1040@0.0.1920.1040" timestamp="1637081187054" />
+    <state width="1899" height="281" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1654286331220" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -180,11 +156,6 @@
           <url>file://$PROJECT_DIR$/pybullet/tasks/seeing/get_image.py</url>
           <line>25</line>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/pybullet/tasks/PicknPlace/PickNPlace.py</url>
-          <line>57</line>
-          <option name="timeStamp" value="8" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
