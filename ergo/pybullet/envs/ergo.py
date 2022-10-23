@@ -6,7 +6,7 @@ from poppy_env import PoppyEnv
 class PoppyErgoEnv(PoppyEnv):
     
     # Ergo-specific urdf loading logic
-    def load_urdf(self, use_fixed_base=False):
+    def load_urdf(self, use_fixed_base, use_self_collision):
         fpath = os.path.dirname(os.path.abspath(__file__))
         fpath += '/../../urdfs/ergo'
         pb.setAdditionalSearchPath(fpath)
@@ -15,6 +15,7 @@ class PoppyErgoEnv(PoppyEnv):
             basePosition = (0, 0, .43),
             baseOrientation = pb.getQuaternionFromEuler((0,0,0)),
             useFixedBase=use_fixed_base,
+            flags = pb.URDF_USE_SELF_COLLISION if use_self_collision else 0,
         )
         return robot_id
 
@@ -76,7 +77,7 @@ def convert_angles(angles):
 
 if __name__ == "__main__":
     
-    env = PoppyErgoEnv(pb.POSITION_CONTROL)
+    env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=True)
 
     # got from running camera.py
     cam = (1.200002670288086,
@@ -85,4 +86,30 @@ if __name__ == "__main__":
         (-0.010284600779414177, -0.012256712652742863, 0.14000000059604645))
     pb.resetDebugVisualizerCamera(*cam)
 
+    action = env.get_position()
+
+    # avoid self-collision
+    action[env.joint_index["r_shoulder_x"]] -= .2
+    action[env.joint_index["l_shoulder_x"]] += .2
+    env.set_position(action)
+
+    print(action)
+    print(env.joint_low)
+    print(env.joint_high)
+
+    i = env.joint_index["r_shoulder_x"]
+    print(i, env.joint_low[i], env.joint_high[i])
+    action[i] = .9 * env.joint_low[i]
+
     input('...')
+
+    # confirm that joint angle limits are enforced, though apparently self-collisions are not
+    # action[0] = 10 * env.joint_high[0]
+    # action[0] = 10 * env.joint_low[0]
+
+    env.goto_position(action)
+
+    input('...')
+
+
+

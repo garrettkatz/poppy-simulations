@@ -16,6 +16,7 @@ class PoppyEnv(object):
         show=False,
         step_hook=None,
         use_fixed_base=False,
+        use_self_collision=False,
     ):
 
         # step_hook(env, action) is called in each env.step(action)
@@ -35,16 +36,20 @@ class PoppyEnv(object):
         pb.loadURDF("plane.urdf")
         
         # use overridden loading logic
-        self.robot_id = self.load_urdf(use_fixed_base)
+        self.robot_id = self.load_urdf(use_fixed_base, use_self_collision)
 
         self.num_joints = pb.getNumJoints(self.robot_id)
         self.joint_name, self.joint_index, self.joint_fixed = {}, {}, {}
+        self.joint_low = np.empty(self.num_joints)
+        self.joint_high = np.empty(self.num_joints)
         for i in range(self.num_joints):
             info = pb.getJointInfo(self.robot_id, i)
             name = info[1].decode('UTF-8')
             self.joint_name[i] = name
             self.joint_index[name] = i
             self.joint_fixed[i] = (info[2] == pb.JOINT_FIXED)
+            self.joint_low[i] = info[8]
+            self.joint_high[i] = info[9]
         
         self.initial_state_id = pb.saveState(self.client_id)
     
@@ -57,7 +62,7 @@ class PoppyEnv(object):
     def step(self, action=None, sleep=None):
         
         self.step_hook(self, action)
-    
+
         if action is not None:
             duration = self.control_period * self.timestep
             distance = np.fabs(action - self.get_position())
