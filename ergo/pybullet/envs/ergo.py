@@ -79,6 +79,10 @@ if __name__ == "__main__":
     
     env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=True)
 
+    # confirm that poppy urdf faces the -y direction
+    pos, orn, vel, ang = env.get_base()
+    env.set_base((pos[0], -1, pos[2]), orn, vel, ang)
+
     # got from running camera.py
     cam = (1.200002670288086,
         15.999960899353027,

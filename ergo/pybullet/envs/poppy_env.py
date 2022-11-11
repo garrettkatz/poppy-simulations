@@ -3,6 +3,8 @@ from pybullet_data import getDataPath
 import time
 import numpy as np
 
+def nop_step_hook(env, action): return None
+
 class PoppyEnv(object):
 
     # override this for urdf logic, should return robot pybullet id
@@ -20,7 +22,7 @@ class PoppyEnv(object):
     ):
 
         # step_hook(env, action) is called in each env.step(action)
-        if step_hook is None: step_hook = lambda env, action: None
+        if step_hook is None: step_hook = nop_step_hook
 
         self.control_mode = control_mode
         self.timestep = timestep
@@ -54,7 +56,8 @@ class PoppyEnv(object):
         self.initial_state_id = pb.saveState(self.client_id)
     
     def reset(self):
-        pb.restoreState(stateId = self.initial_state_id)
+        # pb.restoreState(stateId = self.initial_state_id, clientServerId = self.client_id) # quickstart has wrong keyword
+        pb.restoreState(stateId = self.initial_state_id, physicsClientId = self.client_id) # pybullet.c shows this one
     
     def close(self):
         pb.disconnect()
