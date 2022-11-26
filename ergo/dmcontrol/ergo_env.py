@@ -1,5 +1,5 @@
 import os
-from dm_control import mujoco
+from dm_control import mjcf
 
 class ErgoEnv:
     def __init__(self, control_period):
@@ -11,8 +11,20 @@ class ErgoEnv:
         return self.physics.data.qpos.copy()
 
     def reset(self):
-        urdf_path = os.path.join("..","urdfs","ergo","meshes","poppy_ergo.dmcontrol.urdf")
-        self.physics = mujoco.Physics.from_xml_path(urdf_path)
+
+        # load ergo model
+        # first do `mujoco/bin/path/compile poppy_ergo.dmcontrol.urdf poppy_ergo.dmcontrol.xml`
+        mjcf_path = os.path.join("..","urdfs","ergo","poppy_ergo.dmcontrol.xml")
+        arena = mjcf.from_path(mjcf_path)
+
+        # add floor from https://arxiv.org/pdf/2006.12983.pdf
+        checker = arena.asset.add(
+            'texture', type='2d', builtin='checker', width=300, height=300, rgb1=[.2, .3, .4], rgb2=[.3, .4, .5])
+        grid = arena.asset.add('material', name='grid', texture=checker, texrepeat=[5,5], reflectance=.2)
+        arena.worldbody.add('geom', type='plane', size=[2, 2, .1], material=grid)
+
+        # set up physics and return initial observation
+        self.physics = mjcf.Physics.from_mjcf_model(arena)
         return self.get_observation()
 
     def step(self, action=None):
@@ -28,13 +40,12 @@ if __name__ == "__main__":
     env = ErgoEnv(control_period = 10)
     obs = env.reset()
 
-    # appears like fixed base joint, need to modify model
     # maybe through pymjcf, and/or with urdf extensions (also for meshdir):
     # https://mujoco.readthedocs.io/en/latest/modeling.html?highlight=urdf#urdf-extensions
 
     pt.ion()
     pt.show()
-    for t in range(100):
+    for t in range(50):
         obs = env.step()
         pixels = env.physics.render()
 
@@ -43,6 +54,7 @@ if __name__ == "__main__":
         pt.pause(.01)
 
         print(t)
+        # input(t)
 
     pt.close()
 

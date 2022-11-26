@@ -1,0 +1,276 @@
+<mujoco model="Poppy_Humanoid">
+  <compiler angle="radian" meshdir="./meshes/" autolimits="true"/>
+  <size/>
+  <default/>
+  <asset>
+    <mesh name="pelvis_visual" file="pelvis_visual.STL"/>
+    <mesh name="pelvis_respondable" file="pelvis_respondable.STL"/>
+    <mesh name="r_hip_visual" file="r_hip_visual.STL"/>
+    <mesh name="r_hip_respondable" file="r_hip_respondable.STL"/>
+    <mesh name="r_hip_motor_visual" file="r_hip_motor_visual.STL"/>
+    <mesh name="r_hip_motor_respondable" file="r_hip_motor_respondable.STL"/>
+    <mesh name="r_thigh_visual" file="r_thigh_visual.STL"/>
+    <mesh name="r_thigh_respondable" file="r_thigh_respondable.STL"/>
+    <mesh name="r_shin_visual" file="r_shin_visual.STL"/>
+    <mesh name="r_shin_respondable" file="r_shin_respondable.STL"/>
+    <mesh name="r_foot_visual" file="r_foot_visual.STL"/>
+    <mesh name="r_foot_respondable" file="r_foot_respondable.STL"/>
+    <mesh name="l_hip_visual" file="l_hip_visual.STL"/>
+    <mesh name="l_hip_respondable" file="l_hip_respondable.STL"/>
+    <mesh name="l_hip_motor_visual" file="l_hip_motor_visual.STL"/>
+    <mesh name="l_hip_motor_respondable" file="l_hip_motor_respondable.STL"/>
+    <mesh name="l_thigh_visual" file="l_thigh_visual.STL"/>
+    <mesh name="l_thigh_respondable" file="l_thigh_respondable.STL"/>
+    <mesh name="l_shin_visual" file="l_shin_visual.STL"/>
+    <mesh name="l_shin_respondable" file="l_shin_respondable.STL"/>
+    <mesh name="l_foot_visual" file="l_foot_visual.STL"/>
+    <mesh name="l_foot_respondable" file="l_foot_respondable.STL"/>
+    <mesh name="abs_motors_visual" file="abs_motors_visual.STL"/>
+    <mesh name="abs_motors_respondable" file="abs_motors_respondable.STL"/>
+    <mesh name="abdomen_visual" file="abdomen_visual.STL"/>
+    <mesh name="abdomen_respondable" file="abdomen_respondable.STL"/>
+    <mesh name="spine_visual" file="spine_visual.STL"/>
+    <mesh name="spine_respondable" file="spine_respondable.STL"/>
+    <mesh name="bust_motors_visual" file="bust_motors_visual.STL"/>
+    <mesh name="bust_motors_respondable" file="bust_motors_respondable.STL"/>
+    <mesh name="chest_visual" file="chest_visual.STL"/>
+    <mesh name="chest_respondable" file="chest_respondable.STL"/>
+    <mesh name="neck_visual" file="neck_visual.STL"/>
+    <mesh name="neck_respondable" file="neck_respondable.STL"/>
+    <mesh name="head_visual" file="head_visual.STL"/>
+    <mesh name="head_respondable" file="head_respondable.STL"/>
+    <mesh name="l_shoulder_visual" file="l_shoulder_visual.STL"/>
+    <mesh name="l_shoulder_respondable" file="l_shoulder_respondable.STL"/>
+    <mesh name="l_shoulder_motor_visual" file="l_shoulder_motor_visual.STL"/>
+    <mesh name="l_shoulder_motor_respondable" file="l_shoulder_motor_respondable.STL"/>
+    <mesh name="l_upper_arm_visual" file="l_upper_arm_visual.STL"/>
+    <mesh name="l_upper_arm_respondable" file="l_upper_arm_respondable.STL"/>
+    <mesh name="l_forearm_visual_ergo" file="l_forearm_visual_ergo.STL"/>
+    <mesh name="support_gripper" file="support_gripper.STL" scale="0.001 0.001 0.001"/>
+    <mesh name="l_forearm_respondable" file="l_forearm_respondable.STL"/>
+    <mesh name="r_shoulder_visual" file="r_shoulder_visual.STL"/>
+    <mesh name="r_shoulder_respondable" file="r_shoulder_respondable.STL"/>
+    <mesh name="r_shoulder_motor_visual" file="r_shoulder_motor_visual.STL"/>
+    <mesh name="r_shoulder_motor_respondable" file="r_shoulder_motor_respondable.STL"/>
+    <mesh name="r_upper_arm_visual" file="r_upper_arm_visual.STL"/>
+    <mesh name="r_upper_arm_respondable" file="r_upper_arm_respondable.STL"/>
+    <mesh name="r_forearm_visual_ergo" file="r_forearm_visual_ergo.STL"/>
+    <mesh name="r_forearm_respondable" file="r_forearm_respondable.STL"/>
+    <mesh name="long_U" file="long_U.stl"/>
+    <mesh name="short_U" file="short_U.stl"/>
+    <mesh name="gripper-fixed_part" file="gripper-fixed_part.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="gripper" file="gripper.stl"/>
+  </asset>
+  <worldbody>
+    <body name="pelvis" pos="0 0 0.43">
+      <inertial pos="-0.000134932 -0.000399086 0.00195557" quat="0.688782 0.198679 0.245828 0.652437" mass="0.1852" diaginertia="0.000142684 0.000112087 8.32559e-05"/>
+      <joint name="floating_base" type="free"/>
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="pelvis_visual"/>
+      <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="pelvis_respondable"/>
+      <body name="r_hip" pos="-0.0225417 0 0" quat="0.707107 0.707107 0 0">
+        <inertial pos="-0.0419311 0.0190565 -0.00493692" quat="0.422659 -0.0683029 0.0733623 0.900729" mass="0.0843835" diaginertia="2.97318e-05 2.70066e-05 2.12717e-05"/>
+        <joint name="r_hip_x" pos="0 0 0" axis="0 0 1" range="-0.523599 0.497419"/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_hip_visual"/>
+        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_hip_respondable"/>
+        <body name="r_hip_motor" pos="-0.0439986 0 0.005">
+          <inertial pos="0.000126772 -0.0228896 -0.0134989" quat="0.70485 0.0343354 -0.00861947 0.708472" mass="0.0831708" diaginertia="3.60288e-05 2.94174e-05 2.28628e-05"/>
+          <joint name="r_hip_z" pos="0 0 0" axis="0 1 0" range="-0.436332 1.5708"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_hip_motor_visual"/>
+          <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_hip_motor_respondable"/>
+          <body name="r_thigh" pos="0 -0.024 0">
+            <inertial pos="0.0192501 -0.140974 0.000432765" quat="0.614982 0.56691 -0.431879 0.337476" mass="0.116386" diaginertia="0.00037158 0.000363524 4.4292e-05"/>
+            <joint name="r_hip_y" pos="0 0 0" axis="1 0 0" range="-1.8326 1.48353"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_thigh_visual"/>
+            <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_thigh_respondable"/>
+            <body name="r_shin" pos="0 -0.182 0" quat="0.707107 0 0.707107 0">
+              <inertial pos="-0.00150809 -0.137042 0.0228989" quat="0.706387 0.707397 -0.0204517 -0.0137213" mass="0.115582" diaginertia="0.000398064 0.000393658 3.89697e-05"/>
+              <joint name="r_knee_y" pos="0 0 0" axis="0 0 1" range="-0.0610865 2.33874"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_shin_visual"/>
+              <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_shin_respondable"/>
+              <body name="r_foot" pos="0 -0.18 0" quat="0.707105 0 -0.707108 0">
+                <inertial pos="0.0204293 -0.0233359 0.0268526" quat="0.72099 -0.00327436 0.0293489 0.692316" mass="0.046788" diaginertia="8.8807e-05 8.152e-05 1.7708e-05"/>
+                <joint name="r_ankle_y" pos="0 0 0" axis="1 0 0" range="-0.785398 0.785398"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_foot_visual"/>
+                <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_foot_respondable"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="l_hip" pos="0.0225417 0 0" quat="0.707107 0.707107 0 0">
+        <inertial pos="0.0419306 0.0190564 -0.00493699" quat="0.900684 -0.0733401 0.0683055 0.422757" mass="0.0843843" diaginertia="2.97337e-05 2.70076e-05 2.12733e-05"/>
+        <joint name="l_hip_x" pos="0 0 0" axis="0 0 1" range="-0.497419 0.523599"/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_hip_visual"/>
+        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_hip_respondable"/>
+        <body name="l_hip_motor" pos="0.0439986 0 0.005">
+          <inertial pos="-0.00012708 -0.0228896 -0.0134989" quat="0.708444 0.00861919 -0.0343358 0.704879" mass="0.0831708" diaginertia="3.60288e-05 2.94174e-05 2.28628e-05"/>
+          <joint name="l_hip_z" pos="0 0 0" axis="0 1 0" range="-1.5708 0.436332"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_hip_motor_visual"/>
+          <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_hip_motor_respondable"/>
+          <body name="l_thigh" pos="0 -0.024 0">
+            <inertial pos="-0.0192525 -0.142231 0.000612323" quat="0.342966 0.438427 -0.55908 0.61448" mass="0.114854" diaginertia="0.000358879 0.000351299 4.36806e-05"/>
+            <joint name="l_hip_y" pos="0 0 0" axis="1 0 0" range="-1.81514 1.46608"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_thigh_visual"/>
+            <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_thigh_respondable"/>
+            <body name="l_shin" pos="0 -0.182 0" quat="0.707107 0 0.707107 0">
+              <inertial pos="-0.00150809 -0.137042 -0.0229034" quat="0.707385 0.706407 -0.0146579 -0.0195135" mass="0.115582" diaginertia="0.000398064 0.000393659 3.89698e-05"/>
+              <joint name="l_knee_y" pos="0 0 0" axis="0 0 1" range="-0.0610865 2.33874"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_shin_visual"/>
+              <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_shin_respondable"/>
+              <body name="l_foot" pos="0 -0.18 0" quat="0.707105 0 -0.707108 0">
+                <inertial pos="-0.0204278 -0.0233223 0.0268333" quat="0.692266 -0.029404 0.00327638 0.721035" mass="0.0468257" diaginertia="8.8818e-05 8.15435e-05 1.77245e-05"/>
+                <joint name="l_ankle_y" pos="0 0 0" axis="1 0 0" range="-0.785398 0.785398"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_foot_visual"/>
+                <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_foot_respondable"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="abs_motors" pos="0 -0.017 0.061" quat="0.707107 0.707107 0 0">
+        <inertial pos="-6.29779e-05 0.0133591 -0.0195688" quat="0.999852 -0.0161663 0.00114522 -0.00581166" mass="0.167667" diaginertia="0.000151724 0.000131448 6.52036e-05"/>
+        <joint name="abs_y" pos="0 0 0" axis="1 0 0" range="-0.20944 0.872665"/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="abs_motors_visual"/>
+        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="abs_motors_respondable"/>
+        <body name="abdomen" pos="0 0 0">
+          <inertial pos="4.70359e-07 0.0445314 -0.022296" quat="0.707036 0.00385067 -0.0038463 0.707156" mass="0.038411" diaginertia="5.98684e-05 5.93652e-05 2.35945e-05"/>
+          <joint name="abs_x" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="abdomen_visual"/>
+          <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="abdomen_respondable"/>
+          <body name="spine" pos="0 0.0516375 0">
+            <inertial pos="-2.40412e-07 0.0288452 -0.0100975" quat="0.790478 0.612491 -7.98858e-06 -6.8106e-05" mass="0.0926815" diaginertia="3.84764e-05 3.30399e-05 2.69402e-05"/>
+            <joint name="abs_z" pos="0 0 0" axis="0 1 0" range="-1.5708 1.5708"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="spine_visual"/>
+            <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="spine_respondable"/>
+            <body name="bust_motors" pos="0 0.07985 0.0028">
+              <inertial pos="3.50872e-05 0.010522 -0.0174331" quat="0.999756 -0.0140366 -0.00097742 -0.0170085" mass="0.158876" diaginertia="0.000100967 8.94526e-05 4.25854e-05"/>
+              <joint name="bust_y" pos="0 0 0" axis="1 0 0" range="-0.471239 1.16937"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="bust_motors_visual"/>
+              <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="bust_motors_respondable"/>
+              <body name="chest" pos="0 0 0">
+                <inertial pos="2.35256e-06 0.0514948 -0.0105463" quat="0.493838 0.506106 0.493795 0.50611" mass="0.262926" diaginertia="0.000750991 0.000688512 0.000154597"/>
+                <joint name="bust_x" pos="0 0 0" axis="0 0 1" range="-0.698132 0.698132"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="chest_visual"/>
+                <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="chest_respondable"/>
+                <body name="neck" pos="0 0.084 0.005">
+                  <inertial pos="-0.00147486 0.00928455 2.89601e-06" quat="-0.0203244 0.706853 0.0203385 0.706776" mass="0.00588497" diaginertia="2.57395e-06 2.34071e-06 7.20242e-07"/>
+                  <joint name="head_z" pos="0 0 0" axis="0 1 0" range="-1.5708 1.5708"/>
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="neck_visual"/>
+                  <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="neck_respondable"/>
+                  <body name="head" pos="0 0.02 0" quat="0.984808 -0.173648 0 0">
+                    <inertial pos="0.000422961 0.0429438 -0.00402045" quat="0.291542 0.665125 -0.621087 0.294726" mass="0.248564" diaginertia="0.000561917 0.000502154 0.000369269"/>
+                    <joint name="head_y" pos="0 0 0" axis="1 0 0" range="-0.10472 0.785398"/>
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="head_visual"/>
+                    <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="head_respondable"/>
+                  </body>
+                </body>
+                <body name="l_shoulder" pos="0.0771 0.05 0.004">
+                  <inertial pos="0.0105246 0.00179805 -0.00915202" quat="0.611377 -0.00567022 -0.00840368 0.791274" mass="0.00843599" diaginertia="3.57978e-06 3.38418e-06 1.84572e-06"/>
+                  <joint name="l_shoulder_y" pos="0 0 0" axis="1 0 0" range="-4.18879 1.0472"/>
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_shoulder_visual"/>
+                  <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_shoulder_respondable"/>
+                  <body name="l_shoulder_motor" pos="0.0284 0 0" quat="0 1 0 0">
+                    <inertial pos="2.25562e-07 0.0125757 0.00859826" quat="0.746457 0.665434 -4.41135e-05 5.31335e-05" mass="0.0828144" diaginertia="2.76486e-05 2.27249e-05 1.63595e-05"/>
+                    <joint name="l_shoulder_x" pos="0 0 0" axis="0 0 -1" range="-1.91986 1.8326"/>
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_shoulder_motor_visual"/>
+                    <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_shoulder_motor_respondable"/>
+                    <body name="l_upper_arm" pos="0 0.03625 0.0185">
+                      <inertial pos="3.30519e-05 0.0628256 -0.0106376" quat="0.711796 0.702384 8.70064e-05 0.00171167" mass="0.168141" diaginertia="0.000280829 0.000275958 4.22864e-05"/>
+                      <joint name="l_arm_z" pos="0 0 0" axis="0 -1 0" range="-1.8326 1.8326"/>
+                      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_upper_arm_visual"/>
+                      <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_upper_arm_respondable"/>
+                      <body name="l_forearm" pos="0 0.11175 -0.01">
+                        <inertial pos="0.0069148 0.107158 0.00499021" quat="0.674022 0.726181 0.112584 -0.0753705" mass="0.0486512" diaginertia="0.000186298 0.000183654 1.37026e-05"/>
+                        <joint name="l_elbow_y" pos="0 0 0" axis="1 0 0" range="-2.58309 0.0174533"/>
+                        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="l_forearm_visual_ergo"/>
+                        <geom pos="0 0.145 0.06" quat="0.5 0.5 0.5 -0.5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="support_gripper"/>
+                        <geom size="0.0125 0.01625 0.01" pos="0.0125 0.1325 0.005" quat="0.5 0.5 0.5 -0.5" type="box" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1"/>
+                        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="l_forearm_respondable"/>
+                        <body name="l_long_u" pos="0.01 0.145 0">
+                          <inertial pos="0 0 0" mass="0.01" diaginertia="0.03 0.03 0.03"/>
+                          <joint name="l_wrist_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14"/>
+                          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="long_U"/>
+                          <geom size="0.015 0.01625 0.01" pos="0 0.0175 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                          <body name="l_hand" pos="0 0.025 0" quat="0 1 0 0">
+                            <inertial pos="0 -0.0366667 -0.00441667" quat="0.663479 0.748195 0 0" mass="0.03" diaginertia="0.0400818 0.0400818 0.04"/>
+                            <joint name="l_wrist_x" pos="0 0 0" axis="1 0 0" range="-3.14 3.14"/>
+                            <geom size="0.0125 0.01625 0.01" pos="0 0 -0.005" quat="0.707388 0.706825 0 0" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                            <geom pos="0 -0.065 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="short_U"/>
+                            <geom size="0.0125 0.0175 0.01" pos="0 -0.0325 0" quat="0.000796327 1 0 0" type="box" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1"/>
+                            <geom pos="0 -0.045 0.002" quat="0.000563088 0.707107 -0.000563088 0.707107" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="gripper-fixed_part"/>
+                            <geom size="0.0125 0.01625 0.01" pos="0 0 -0.005" quat="0.707388 0.706825 0 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                            <geom size="0.0125 0.0175 0.01" pos="0 -0.0325 0" quat="0.000796327 1 0 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                            <geom size="0.0005 0.0005 0.0005" pos="0 -0.11 -0.01325" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                            <geom size="0.01 0.0125 0.0015" pos="0 -0.0975 -0.01325" type="box"/>
+                            <body name="l_thumb" pos="0 -0.04 0" quat="0.707107 0 0.707107 0">
+                              <inertial pos="-0.00775 -0.03375 0" quat="0.702608 0.702608 -0.0796336 -0.0796336" mass="0.02" diaginertia="0.040024 0.040024 0.04"/>
+                              <joint name="l_gripper" pos="0 0 0" axis="0 0 1" range="-3.14 3.14"/>
+                              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.752941 0.752941 0.752941 1" mesh="gripper"/>
+                              <geom size="0.0005 0.0005 0.0005" pos="-0.0155 -0.0675 0" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                              <geom size="0.0015 0.0125 0.01" pos="-0.0155 -0.055 0" type="box"/>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+                <body name="r_shoulder" pos="-0.0771 0.05 0.004">
+                  <inertial pos="-0.010497 0.00172611 -0.0091661" quat="0.789558 0.00889298 0.00551368 0.613586" mass="0.0084819" diaginertia="3.58147e-06 3.39496e-06 1.85504e-06"/>
+                  <joint name="r_shoulder_y" pos="0 0 0" axis="1 0 0" range="-4.17134 1.0821"/>
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_shoulder_visual"/>
+                  <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_shoulder_respondable"/>
+                  <body name="r_shoulder_motor" pos="-0.0284 0 0" quat="0 1 0 0">
+                    <inertial pos="2.25562e-07 0.0125757 0.00859826" quat="0.746457 0.665434 -4.41135e-05 5.31335e-05" mass="0.0828144" diaginertia="2.76486e-05 2.27249e-05 1.63595e-05"/>
+                    <joint name="r_shoulder_x" pos="0 0 0" axis="0 0 -1" range="-3.33358 0.279253"/>
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_shoulder_motor_visual"/>
+                    <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_shoulder_motor_respondable"/>
+                    <body name="r_upper_arm" pos="0 0.03625 0.0185">
+                      <inertial pos="-3.32549e-05 0.0628256 -0.0106376" quat="0.711796 0.702384 -4.2401e-05 -0.00175658" mass="0.168141" diaginertia="0.000280829 0.000275958 4.22864e-05"/>
+                      <joint name="r_arm_z" pos="0 0 0" axis="0 -1 0" range="-1.8326 1.8326"/>
+                      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_upper_arm_visual"/>
+                      <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_upper_arm_respondable"/>
+                      <body name="r_forearm" pos="0 0.11175 -0.01">
+                        <inertial pos="-0.00691619 0.107158 0.00498984" quat="0.674009 0.726151 -0.112759 0.0755153" mass="0.0486511" diaginertia="0.000186301 0.000183656 1.37031e-05"/>
+                        <joint name="r_elbow_y" pos="0 0 0" axis="1 0 0" range="-2.58309 0.0174533"/>
+                        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="r_forearm_visual_ergo"/>
+                        <geom pos="-0.025 0.145 0.06" quat="0.5 0.5 0.5 -0.5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="support_gripper"/>
+                        <geom size="0.0125 0.01625 0.01" pos="-0.0125 0.1325 0.005" quat="0.5 0.5 0.5 -0.5" type="box" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1"/>
+                        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="r_forearm_respondable"/>
+                        <body name="r_long_u" pos="-0.01 0.145 0">
+                          <inertial pos="0 0 0" mass="0.01" diaginertia="0.03 0.03 0.03"/>
+                          <joint name="r_wrist_y" pos="0 0 0" axis="0 1 0" range="-3.14 3.14"/>
+                          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="long_U"/>
+                          <geom size="0.015 0.01625 0.01" pos="0 0.0175 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                          <body name="r_hand" pos="0 0.025 0" quat="0 1 0 0">
+                            <inertial pos="0 -0.0366667 -0.00441667" quat="0.663479 0.748195 0 0" mass="0.03" diaginertia="0.0400818 0.0400818 0.04"/>
+                            <joint name="r_wrist_x" pos="0 0 0" axis="1 0 0" range="-3.14 3.14"/>
+                            <geom size="0.0125 0.01625 0.01" pos="0 0 -0.005" quat="0.707388 0.706825 0 0" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                            <geom pos="0 -0.065 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="short_U"/>
+                            <geom size="0.0125 0.0175 0.01" pos="0 -0.0325 0" quat="0.000796327 1 0 0" type="box" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1"/>
+                            <geom pos="0 -0.045 0.002" quat="0.000563088 0.707107 -0.000563088 0.707107" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="gripper-fixed_part"/>
+                            <geom size="0.0125 0.01625 0.01" pos="0 0 -0.005" quat="0.707388 0.706825 0 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                            <geom size="0.0125 0.0175 0.01" pos="0 -0.0325 0" quat="0.000796327 1 0 0" type="box" rgba="0.9 0.9 0.9 1"/>
+                            <geom size="0.0005 0.0005 0.0005" pos="0 -0.11 -0.01325" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                            <geom size="0.01 0.0125 0.0015" pos="0 -0.0975 -0.01325" type="box"/>
+                            <body name="r_thumb" pos="0 -0.04 0" quat="0.707107 0 0.707107 0">
+                              <inertial pos="-0.00775 -0.03375 0" quat="0.702608 0.702608 -0.0796336 -0.0796336" mass="0.02" diaginertia="0.040024 0.040024 0.04"/>
+                              <joint name="r_gripper" pos="0 0 0" axis="0 0 1" range="-3.14 3.14"/>
+                              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.752941 0.752941 0.752941 1" mesh="gripper"/>
+                              <geom size="0.0005 0.0005 0.0005" pos="-0.0155 -0.0675 0" type="box" contype="0" conaffinity="0" group="1" density="0"/>
+                              <geom size="0.0015 0.0125 0.01" pos="-0.0155 -0.055 0" type="box"/>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
