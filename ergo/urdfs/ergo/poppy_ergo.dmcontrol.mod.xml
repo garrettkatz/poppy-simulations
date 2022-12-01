@@ -4,7 +4,8 @@
   <default/>
 
   <default class="pmot">
-    <position kp="3000" />
+    <!-- too large kp could crash sim -->
+    <position kp="20" />
   </default>
 
   <asset>
@@ -67,7 +68,7 @@
     <mesh name="gripper" file="gripper.stl"/>
   </asset>
   <worldbody>
-    <body name="pelvis" pos="0 0 0.43">
+    <body name="pelvis" pos="0 0 0.42">
       <inertial pos="-0.000134932 -0.000399086 0.00195557" quat="0.688782 0.198679 0.245828 0.652437" mass="0.1852" diaginertia="0.000142684 0.000112087 8.32559e-05"/>
       <joint name="floating_base" type="free"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.9 0.9 0.9 1" mesh="pelvis_visual"/>
@@ -279,15 +280,38 @@
     </body>
   </worldbody>
 
-  <!-- <actuator> -->
-  <!--   <position class="pmot" joint="r_hip_x"/> -->
-  <!--   <position class="pmot" joint="r_hip_y"/> -->
-  <!--   <position class="pmot" joint="r_knee_y"/> -->
-  <!--   <position class="pmot" joint="r_ankle_y"/> -->
-  <!--   <position class="pmot" joint="l_hip_x"/> -->
-  <!--   <position class="pmot" joint="l_hip_y"/> -->
-  <!--   <position class="pmot" joint="l_knee_y"/> -->
-  <!--   <position class="pmot" joint="l_ankle_y"/> -->
-  <!-- </actuator> -->
+  <actuator>
+    <position class="pmot" joint="r_hip_x" />
+    <position class="pmot" joint="r_hip_z" />
+    <position class="pmot" joint="r_hip_y" />
+    <position class="pmot" joint="r_knee_y" />
+    <position class="pmot" joint="r_ankle_y" />
+    <position class="pmot" joint="l_hip_x" />
+    <position class="pmot" joint="l_hip_z" />
+    <position class="pmot" joint="l_hip_y" />
+    <position class="pmot" joint="l_knee_y" />
+    <position class="pmot" joint="l_ankle_y" />
+    <position class="pmot" joint="abs_y" />
+    <position class="pmot" joint="abs_x" />
+    <position class="pmot" joint="abs_z" />
+    <position class="pmot" joint="bust_y" />
+    <position class="pmot" joint="bust_x" />
+    <position class="pmot" joint="head_z" />
+    <position class="pmot" joint="head_y" />
+    <position class="pmot" joint="l_shoulder_y" />
+    <position class="pmot" joint="l_shoulder_x" />
+    <position class="pmot" joint="l_arm_z" />
+    <position class="pmot" joint="l_elbow_y" />
+    <position class="pmot" joint="l_wrist_y" />
+    <position class="pmot" joint="l_wrist_x" />
+    <position class="pmot" joint="l_gripper" />
+    <position class="pmot" joint="r_shoulder_y" />
+    <position class="pmot" joint="r_shoulder_x" />
+    <position class="pmot" joint="r_arm_z" />
+    <position class="pmot" joint="r_elbow_y" />
+    <position class="pmot" joint="r_wrist_y" />
+    <position class="pmot" joint="r_wrist_x" />
+    <position class="pmot" joint="r_gripper" />
+  </actuator>
 
 </mujoco>
