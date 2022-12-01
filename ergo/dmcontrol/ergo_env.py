@@ -14,7 +14,8 @@ class ErgoEnv:
 
         # load ergo model
         # first do `mujoco/bin/path/compile poppy_ergo.dmcontrol.urdf poppy_ergo.dmcontrol.xml`
-        mjcf_path = os.path.join("..","urdfs","ergo","poppy_ergo.dmcontrol.xml")
+        # mjcf_path = os.path.join("..","urdfs","ergo","poppy_ergo.dmcontrol.xml")
+        mjcf_path = os.path.join("..","urdfs","ergo","poppy_ergo.dmcontrol.mod.xml")
         arena = mjcf.from_path(mjcf_path)
 
         # add floor from https://arxiv.org/pdf/2006.12983.pdf
