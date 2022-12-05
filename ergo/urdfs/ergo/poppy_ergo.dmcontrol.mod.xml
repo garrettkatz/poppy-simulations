@@ -1,11 +1,12 @@
 <mujoco model="Poppy_Humanoid">
   <compiler angle="radian" meshdir="./meshes/" autolimits="true"/>
   <size/>
-  <default/>
-
-  <default class="pmot">
-    <!-- too large kp could crash sim -->
-    <position kp="20" />
+  <default>
+    <joint damping="1000"/>
+    <default class="pmot">
+      <!-- too large kp could crash sim without damping-->
+      <position kp="20" />
+    </default>
   </default>
 
   <asset>
