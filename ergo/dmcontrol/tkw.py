@@ -31,15 +31,6 @@ def intersect_circles(x1, y1, r1, x2, y2, r2):
     x, y = x1 + r1*np.cos(ang), y1 + r1*np.sin(ang)
     return x, y
 
-def stance_ik(a0, a4, x4, y4, lengths):
-    x1, y1 = lengths[0]*np.cos(a0), lengths[0]*np.sin(a0)
-    x3, y3 = x4 + lengths[-1]*np.cos(a4), y4 + lengths[-1]*np.sin(a4)
-    x2, y2 = intersect_circles(x3, y3, lengths[2], x1, y1, lengths[1])
-    a1 = np.arctan2(y2-y1, x2-x1) - a0
-    a2 = np.arctan2(y3-y2, x3-x2) - (a1 + a0)
-    a3 = np.arctan2(y4-y3, x4-x3) - (a2 + a1 + a0)
-    return a1, a2, a3
-
 if __name__ == "__main__":
 
     # x1, y1, r1 = -5, 1, 4
@@ -50,7 +41,9 @@ if __name__ == "__main__":
     # pt.plot(x, y, 'ko')
     # pt.show()    
 
-    lengths = [4, 2, 2, .5]
+    lengths = [.5, .2, 4, 2, 2, .2, .5]
+
+    al = .05*np.pi # half-angle between upper legs and y-axis in initial stance
 
     # frames = np.zeros((2,2,3))
     # frames[0,0,0] = 1
@@ -58,7 +51,7 @@ if __name__ == "__main__":
     # frames[1,1,2] = .5
 
     frames = fk(
-        [np.pi*.51, -np.pi*1.02, 0, np.pi*.51],
+        [np.pi, -np.pi*.75, np.pi*.25 + al, np.pi - 2*al, 0, np.pi*1.25 - (np.pi*1.5 - al), np.pi*.75],
         lengths
     )
 
@@ -66,18 +59,28 @@ if __name__ == "__main__":
     pt.axis('equal')
     pt.show()
 
-    x4, y4 = frames[4,:,2]
-    print(x4, y4)
-    a0 = np.pi*.49
-    a4 = np.pi*.95
-    a1, a2, a3 = stance_ik(a0, a4, x4, y4, lengths)
-    
+    aa = np.pi*.47 # angle of front leg relative to x-axis
+    at = np.pi*.51 # angle of back sole relative to x-axis
 
-    frames = fk(
-        [a0, a1, a2, a3],
-        lengths
-    )
-    print(frames[4,:,2])
+    xa, ya = frames[2,:,2] # front ankle
+    xw, yw = xa + lengths[2]*np.cos(aa), ya + lengths[2]*np.sin(aa) # waist
+    xt, yt = frames[-1,:,2] # back toe
+    xh, yh = xt + lengths[-1]*np.cos(at), yt + lengths[-1]*np.sin(at) # back heel
+    xb, yb = xh + lengths[-2]*np.cos(at - np.pi*.75), yh + lengths[-2]*np.sin(at - np.pi*.75) # back ankle
+    xk, yk = intersect_circles(xb, yb, lengths[4], xw, yw, lengths[3]) # back knee
+
+    # kin chain angles
+    angles = [0]*7
+    angles[0] = np.pi # front toe
+    angles[1] = -np.pi*.75 # front heel
+    angles[2] = aa - sum(angles[:2]) # front ankle
+    angles[3] = np.arctan2(yk-yw, xk-xw) - aa # waist
+    angles[4] = np.arctan2(yb-yk, xb-xk) - sum(angles[:4]) # back knee
+    angles[5] = np.arctan2(yh-yb, xh-xb) - sum(angles[:5]) # back ankle
+    angles[6] = np.pi*.75 # back heel
+
+    frames = fk(angles, lengths)
+    print(frames[-1,:,2])
     
     draw(frames)
     pt.axis('equal')
