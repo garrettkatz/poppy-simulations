@@ -860,13 +860,13 @@
         </link>
         <link name="l_fixed_tip">
           <!-- comment visual placeholder to see collision shape -->
-		  <contact>
-      <lateral_friction value="1.0"/>
-      <rolling_friction value="1.0"/>
-      <inertia_scaling value="3.0"/>
-      <contact_cfm value="0.0"/>
-      <contact_erp value="1.0"/>
-    </contact>
+          <contact>
+            <lateral_friction value="1.0"/>
+            <rolling_friction value="1.0"/>
+            <inertia_scaling value="3.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="1.0"/>
+          </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
@@ -923,6 +923,36 @@
         <!--         <inertia ixx="0.03" ixy="0.0" ixz="0.0" iyy="0.03" iyz="0.0" izz="0.03"/> -->
         <!--     </inertial> -->
         <!-- </link> -->
+
+
+	<link name="l_toe">
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"></origin>
+                <mass value="0.06"></mass>
+                <inertia ixx="1E-06" ixy="0" ixz="0" iyy="1E-06" iyz="0" izz="1E-06"></inertia>
+            </inertial>
+	</link>
+	<link name="l_heel">
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"></origin>
+                <mass value="0.06"></mass>
+                <inertia ixx="1E-06" ixy="0" ixz="0" iyy="1E-06" iyz="0" izz="1E-06"></inertia>
+            </inertial>
+	</link>
+	<link name="r_toe">
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"></origin>
+                <mass value="0.06"></mass>
+                <inertia ixx="1E-06" ixy="0" ixz="0" iyy="1E-06" iyz="0" izz="1E-06"></inertia>
+            </inertial>
+	</link>
+	<link name="r_heel">
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"></origin>
+                <mass value="0.06"></mass>
+                <inertia ixx="1E-06" ixy="0" ixz="0" iyy="1E-06" iyz="0" izz="1E-06"></inertia>
+            </inertial>
+	</link>
 
 
 	<joint name="r_hip_x" type="revolute">
@@ -1173,6 +1203,28 @@
             <origin rpy="0 0 0" xyz="-0.0155 -0.0675 0"/>
             <parent link="l_thumb"/>
             <child link="l_moving_tip"/>
+        </joint>
+
+        <!-- toes and heels start here -->
+        <joint name="l_toe" type="fixed">
+            <origin rpy="0 0 0" xyz="-0.01781701 -0.03594633  0.10130183"/>
+            <parent link="l_foot"/>
+            <child link="l_toe"/>
+        </joint>
+        <joint name="l_heel" type="fixed">
+            <origin rpy="0 0 0" xyz="-0.02091397 -0.03580464 -0.04469591"/>
+            <parent link="l_foot"/>
+            <child link="l_heel"/>
+        </joint>
+        <joint name="r_toe" type="fixed">
+            <origin rpy="0 0 0" xyz="0.01781701 -0.03594633  0.10130183"/>
+            <parent link="r_foot"/>
+            <child link="r_toe"/>
+        </joint>
+        <joint name="r_heel" type="fixed">
+            <origin rpy="0 0 0" xyz="0.02091397 -0.03580464 -0.04469591"/>
+            <parent link="r_foot"/>
+            <child link="r_heel"/>
         </joint>
 
 </robot>
