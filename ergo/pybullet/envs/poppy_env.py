@@ -152,6 +152,7 @@ class PoppyEnv(object):
 
     # Run IK, accounting for fixed joints
     def inverse_kinematics(self, link_indices, target_positions, num_iters=1000):
+        # targets for link coordinates, not COM coordinates
 
         angles = pb.calculateInverseKinematics2(
             self.robot_id,
