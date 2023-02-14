@@ -65,6 +65,17 @@ class PoppyErgoEnv(PoppyEnv):
             flags = pb.ER_NO_SEGMENTATION_MASK) # not much speed difference
         # rgba = np.empty((height, width, 4)) # much faster than pb.getCameraImage
         return rgba, view, proj
+
+    # convert angle array to pypot-compatible dictionary
+    def angle_dict(self, angle_array, convert=True):
+        pypot_motors = [
+            'abs_y', 'abs_x', 'abs_z', 'bust_y', 'bust_x', 'head_z', 'head_y',
+            'l_shoulder_y', 'l_shoulder_x', 'l_arm_z', 'l_elbow_y', 'r_shoulder_y',
+            'r_shoulder_x', 'r_arm_z', 'r_elbow_y', 'l_hip_x', 'l_hip_z', 'l_hip_y',
+            'l_knee_y', 'l_ankle_y', 'r_hip_x', 'r_hip_z', 'r_hip_y', 'r_knee_y', 'r_ankle_y']
+        return {
+            name: angle_array[self.joint_index[name]] * (180/np.pi if convert else 1)
+            for name in pypot_motors}
             
 # convert from physical robot angles to pybullet angles
 # angles[name]: angle for named joint (in degrees)

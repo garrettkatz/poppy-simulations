@@ -158,6 +158,8 @@ class PoppyEnv(object):
             self.robot_id,
             link_indices,
             target_positions,
+            # lowerLimits = [self.joint_low[j] for j in range(self.num_joints) if not self.joint_fixed[j]],
+            # upperLimits = [self.joint_high[j] for j in range(self.num_joints) if not self.joint_fixed[j]],
             # residualThreshold=1e-4, # default 1e-4 not enough for ergo jr
             maxNumIterations=num_iters, # default 20 usually not enough
         )
