@@ -383,11 +383,11 @@ if __name__ == "__main__":
                 links = [env.joint_index['l_heel']]
                 targets = (swing_jnt_pos[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
                 free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]
-                plant_angles = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
+                plant_angles = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
                 plant_com_pos, plant_jnt_pos, plant_base = settle(plant_angles, swing_base, seconds=1)
     
                 # use knee position from interpolant, just re-solve ankle
-                plant_angles = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
+                plant_angles = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
                 env.set_position(plant_angles)
     
                 plant_traj[t] = plant_angles
@@ -426,20 +426,34 @@ if __name__ == "__main__":
             push_front = -.025*np.pi,
             # angle from back leg to y-axis in push stance
             push_back = -.05*np.pi,
-            num_waypoints = 3,
+            num_waypoints = 5,
             show = do_show,
         )
         env.close()
         with open('traj1.pkl', "wb") as f: pk.dump(trajs, f)
 
-        # mirror angles for pypot port
-
         # pypot-compatible format
-        pypot_trajs = [
-            (speed, [
-                env.angle_dict(angles)
-                for angles in traj])
-            for (traj, speed) in trajs]
+        prev_angles = np.zeros(env.num_joints)
+        trajs = ((trajs[0][0][:1], .5),) + trajs # first send to init angles
+        pypot_trajs = []
+        for mirror in (False, True): # pypot doesn't have env's mirror function, do it here
+            for (traj, speed) in trajs:
+                pypot_traj = []
+                if len(traj) > 1:  traj = traj[1:] # last waypoint of one traj = first of next
+                for angles in traj:
+
+                    # duration calculation from env.goto_position
+                    distance = np.sum((angles - prev_angles)**2)**.5
+                    duration = distance / speed
+                    prev_angles = angles
+                    print(duration)
+
+                    # next pypot trajectory waypoint
+                    angle_dict = env.angle_dict(env.mirror_position(angles) if mirror else angles)
+                    pypot_traj.append((duration, angle_dict))
+
+                pypot_trajs.append(pypot_traj)
+
         with open('pypot_traj1.pkl', "wb") as f: pk.dump(pypot_trajs, f, protocol=2) 
    
     with open('traj1.pkl', "rb") as f: trajs = pk.load(f)
