@@ -237,6 +237,9 @@ if __name__ == "__main__":
             init_angles[env.joint_index['l_hip_y']] = +init_front
             init_angles[env.joint_index['r_ankle_y']] = +init_front
             init_angles[env.joint_index['l_ankle_y']] = -init_front
+            # init_angles[env.joint_index['r_shoulder_x']] = -np.pi/8
+            # init_angles[env.joint_index['l_shoulder_x']] = +np.pi/8
+            init_angles[env.joint_index['abs_y']] = +np.pi/16
             init_com_pos, init_jnt_pos, init_base = settle(init_angles, base=zero_base)
         
             # translational offset from back to front toes/heels in init stance
@@ -256,6 +259,8 @@ if __name__ == "__main__":
             for t,w in enumerate(np.linspace(0, 1, num_waypoints)):
     
                 shift_back_t = w*shift_back + (1-w)*init_front
+                shift_abs_t = w*0 + (1-w)*init_angles[env.joint_index['abs_y']]
+                shift_shoulder_t = w*(-np.pi/8) + (1-w)*init_angles[env.joint_index['r_shoulder_x']]
     
                 # get target angles for most links
                 shift_angles = np.zeros(env.num_joints)
@@ -263,6 +268,9 @@ if __name__ == "__main__":
                 shift_angles[env.joint_index['l_hip_y']] = +shift_back_t
                 shift_angles[env.joint_index['r_ankle_y']] = +shift_back_t
                 shift_angles[env.joint_index['l_ankle_y']] = -shift_back_t
+                shift_angles[env.joint_index['r_shoulder_x']] = shift_shoulder_t
+                # shift_angles[env.joint_index['l_shoulder_x']] = +np.pi/8
+                shift_angles[env.joint_index['abs_y']] = shift_abs_t
                 shift_com_pos, shift_jnt_pos, shift_base = settle(shift_angles, zero_base, seconds=1)
     
                 # initialize positive knee angle to avoid out-of-joint-range solutions
@@ -299,6 +307,8 @@ if __name__ == "__main__":
             push_angles[env.joint_index['l_hip_y']] = +push_front
             push_angles[env.joint_index['r_ankle_y']] = +push_front
             push_angles[env.joint_index['l_ankle_y']] = -push_front
+            # push_angles[env.joint_index['r_shoulder_x']] = -np.pi/8
+            # push_angles[env.joint_index['l_shoulder_x']] = +np.pi/8
             push_com_pos, push_jnt_pos, push_base = settle(push_angles, zero_base)
     
             # set up back upper leg angle
@@ -369,6 +379,8 @@ if __name__ == "__main__":
             final_plant_angles[env.joint_index['l_hip_y']] = -init_front
             final_plant_angles[env.joint_index['r_ankle_y']] = -init_front
             final_plant_angles[env.joint_index['l_ankle_y']] = +init_front
+            # final_plant_angles[env.joint_index['r_shoulder_x']] = -np.pi/8
+            # final_plant_angles[env.joint_index['l_shoulder_x']] = +np.pi/8
     
             plant_traj = np.empty((num_waypoints, env.num_joints))
             for t,w in enumerate(np.linspace(0, 1, num_waypoints)):
@@ -377,8 +389,7 @@ if __name__ == "__main__":
                 plant_angles = w*final_plant_angles + (1-w)*swing_angles
                 env.set_position(plant_angles)
                 _, plant_jnt_pos, _ = settle(plant_angles, zero_base, seconds=0)
-    
-    
+
                 # set up heel target for planted leg (reflect since back becomes front)
                 links = [env.joint_index['l_heel']]
                 targets = (swing_jnt_pos[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
@@ -399,10 +410,10 @@ if __name__ == "__main__":
                     pt.show()
     
             return (
-                (shift_traj, 1),
-                (push_traj, 1),
+                (shift_traj, .3),
+                (push_traj, .3),
                 (swing_traj, 4.),
-                (plant_traj, 1),
+                (plant_traj, .3),
             )
     
         # # get waypoints
@@ -426,7 +437,7 @@ if __name__ == "__main__":
             push_front = -.025*np.pi,
             # angle from back leg to y-axis in push stance
             push_back = -.05*np.pi,
-            num_waypoints = 5,
+            num_waypoints = 10,
             show = do_show,
         )
         env.close()
