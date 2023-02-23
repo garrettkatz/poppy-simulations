@@ -44,6 +44,7 @@ class PoppyEnv(object):
         self.joint_name, self.joint_index, self.joint_fixed = {}, {}, {}
         self.joint_low = np.empty(self.num_joints)
         self.joint_high = np.empty(self.num_joints)
+        self.joint_parent = np.empty(self.num_joints, dtype=int)
         for i in range(self.num_joints):
             info = pb.getJointInfo(self.robot_id, i)
             name = info[1].decode('UTF-8')
@@ -52,6 +53,7 @@ class PoppyEnv(object):
             self.joint_fixed[i] = (info[2] == pb.JOINT_FIXED)
             self.joint_low[i] = info[8]
             self.joint_high[i] = info[9]
+            self.joint_parent[i] = info[-1]
         
         self.initial_state_id = pb.saveState(self.client_id)
     

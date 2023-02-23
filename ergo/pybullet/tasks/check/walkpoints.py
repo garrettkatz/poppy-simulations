@@ -15,8 +15,8 @@ if __name__ == "__main__":
     do_synthesis = True
     do_show = False
     num_waypoints = 20
-    do_show = True
-    num_waypoints = 3
+    # do_show = True
+    # num_waypoints = 3
 
     if do_synthesis:
 
@@ -63,6 +63,7 @@ if __name__ == "__main__":
         def iksolve(links, targets, angles, free, num_iters=1000, verbose=False):
             # constrain given links to target positions
             # and joints to given angles (except parent joints of free links)
+            # return full solution joints, out-of-range flag, and constraint error
     
             # save current angles for temporary overwrite
             save_angles = env.get_position()
@@ -88,21 +89,24 @@ if __name__ == "__main__":
                     print(f"{env.joint_name[i]}: {angles[i]} not in [{env.joint_low[i]}, {env.joint_high[i]}]!")
                     oojr = True
             if oojr: input('uh oh...')
-    
+
+            # measure constraint error
+            env.set_position(angles)
+            all_actual = get_pos()[1]
+            all_actual = all_actual[all_links]
+            error = np.fabs(all_targets - all_actual).max()
+
             if verbose:
-                env.set_position(angles)
-                all_actual = get_pos()[1]
-                all_actual = all_actual[all_links]
                 print('iksolve errors:')
                 print([env.joint_name[i] for i in range(env.num_joints) if i not in free])
                 print(all_targets - all_actual)
-                print(np.fabs(all_targets - all_actual).max())
+                print(error)
     
             # restore given angles
             env.set_position(save_angles)
     
             # return result
-            return angles
+            return angles, oojr, error
     
         def reflectx(vec):
             return vec * np.array([-1, +1, +1]) # reflect through yz plane for when back foot becomes front
@@ -114,15 +118,107 @@ if __name__ == "__main__":
             com_pos, jnt_pos = get_pos()
             base = env.get_base()
             return com_pos, jnt_pos, base
+
+        def get_waypoints(
+            # angle from vertical axis to front leg in initial stance
+            init_front,
+            # angle for abs_y joint in initial stance
+            init_abs_y,
+            # angle from back leg to vertical axis in shift stance
+            shift_back,
+            # angle of torso towards support leg in shift stance
+            shift_torso,
+            # angle from vertical axis to front leg in push stance
+            push_front,
+            # angle from back leg to vertical axis in push stance
+            push_back,
+            # whether to visualize
+            show,
+        ):
+
+            # get base in zero joint angle pose
+            zero_angles = np.zeros(env.num_joints)
+            _, _, zero_base = settle(zero_angles)
+
+            # initial waypoint pose
+            init_angles = env.angle_array({
+                'r_hip_y': -init_front,
+                'l_hip_y': +init_front,
+                'r_ankle_y': +init_front,
+                'l_ankle_y': -init_front,
+                'abs_y': init_abs_y,
+            }, convert=False)
+            _, init_jnt_pos, _ = settle(init_angles, base=zero_base, seconds=0)
+        
+            # translational offset from back to front toes/heels in init stance
+            foot_to_foot = init_jnt_pos[env.joint_index['r_toe']] - init_jnt_pos[env.joint_index['l_toe']]
+
+            # shift waypoint pose
+            shift_angles = env.angle_array({
+                'r_hip_y': -shift_back,
+                'l_hip_y': +shift_back,
+                'r_ankle_y': +shift_back,
+                'l_ankle_y': -shift_back,
+                'abs_x': +shift_torso,
+                'bust_x': -shift_torso,
+                'l_shoulder_x': +shift_torso,
+                'r_shoulder_x': -shift_torso,
+                'r_knee_y': 0.1 # to discourage out-of-joint-range solutions
+            }, convert=False)
+            _, shift_jnt_pos, _ = settle(shift_angles, base=zero_base, seconds=0)
+
+            # set up front toe/heel target
+            links = [env.joint_index[name] for name in ['r_toe','r_heel']]
+            targets = np.stack((
+                shift_jnt_pos[env.joint_index['l_toe']] + foot_to_foot,
+                shift_jnt_pos[env.joint_index['l_heel']] + foot_to_foot,
+            ))
+            free = [env.joint_index[name] for name in ['r_knee_y', 'r_ankle_y']]
+            shift_angles, shift_oojr, shift_error = iksolve(links, targets, shift_angles, free, num_iters=2000)
+
+            # push stance
+            push_angles = env.angle_array({
+                'r_hip_y': -push_back,
+                'l_hip_y': push_front,
+                'r_ankle_y': +push_back,
+                'abs_x': shift_angles[env.joint_index['abs_x']],
+                'bust_x': shift_angles[env.joint_index['bust_x']],
+                'l_shoulder_x': shift_angles[env.joint_index['l_shoulder_x']],
+                'r_shoulder_x': shift_angles[env.joint_index['r_shoulder_x']],
+            }, convert=False)
+            _, push_jnt_pos, _ = settle(push_angles, zero_base, seconds=0)
+    
+            # set up back toe target
+            links = [env.joint_index['l_toe']]
+            targets = (push_jnt_pos[env.joint_index['r_toe']] - foot_to_foot)[np.newaxis]
+            free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
+            push_angles, push_oojr, push_error = iksolve(links, targets, push_angles, free, num_iters=2000)
+            push_com_pos, push_jnt_pos, push_base = settle(push_angles, zero_base, seconds=0)
+
+            # set up heel target for swinging leg (reflect since back becomes front)
+            links = [env.joint_index['l_heel']]
+            targets = (push_jnt_pos[env.joint_index['r_heel']] + reflectx(foot_to_foot))[np.newaxis]
+            free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y', 'l_knee_y']]
+            swing_angles, swing_oojr, swing_error = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
+
+            return (
+                (init_angles, False, 0),
+                (shift_angles, shift_oojr, shift_error),
+                (push_angles, push_oojr, push_error),
+                (swing_angles, swing_oojr, swing_error),
+            )
+
+        def interpolate_waypoints():
+            pass
     
         def get_traj(
-            # angle from y-axis to front leg in initial stance
+            # angle from vertical axis to front leg in initial stance
             init_front,
-            # angle from back leg to y-axis in shift stance
+            # angle from back leg to vertical axis in shift stance
             shift_back,
-            # angle from y-axis to front leg in push stance
+            # angle from vertical axis to front leg in push stance
             push_front,
-            # angle from back leg to y-axis in push stance
+            # angle from back leg to vertical axis in push stance
             push_back,
             # number of waypoints between each stance
             num_waypoints,
@@ -204,7 +300,7 @@ if __name__ == "__main__":
                     shift_jnt_pos[env.joint_index['l_heel']] + heel_to_heel,
                 ))
                 free = [env.joint_index[name] for name in ['r_knee_y', 'r_ankle_y']]
-                shift_angles = iksolve(links, targets, shift_angles, free, num_iters=2000)
+                shift_angles, _, _ = iksolve(links, targets, shift_angles, free, num_iters=2000)
     
                 env.set_position(shift_angles)
     
@@ -254,7 +350,7 @@ if __name__ == "__main__":
             links = [env.joint_index['l_toe']]
             targets = (push_jnt_pos[env.joint_index['r_toe']] - toe_to_toe)[np.newaxis]
             free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
-            final_push_angles = iksolve(links, targets, push_angles, free, num_iters=2000)
+            final_push_angles, _, _ = iksolve(links, targets, push_angles, free, num_iters=2000)
     
             push_com_pos, push_jnt_pos, push_base = settle(final_push_angles, zero_base)#, seconds=0.1)
             print("PUSH final")
@@ -277,7 +373,7 @@ if __name__ == "__main__":
                 free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
     
                 # re-solve knee/ankle to satisfy toe constraint
-                push_angles = iksolve(links, targets, push_angles, free, num_iters=2000, verbose=False)
+                push_angles, _, _ = iksolve(links, targets, push_angles, free, num_iters=2000, verbose=False)
                 env.set_position(push_angles)
     
                 push_traj[t] = push_angles
@@ -294,7 +390,7 @@ if __name__ == "__main__":
             links = [env.joint_index['l_heel']]
             targets = (push_jnt_pos[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
             free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y', 'l_knee_y']]
-            swing_angles = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
+            swing_angles, _, _ = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
             swing_com_pos, swing_jnt_pos, swing_base = settle(swing_angles, push_base, seconds=3)
     
             # fast swing
@@ -331,11 +427,11 @@ if __name__ == "__main__":
                 links = [env.joint_index['l_heel']]
                 targets = (swing_jnt_pos[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
                 free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]
-                plant_angles = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
+                plant_angles, _, _ = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
                 plant_com_pos, plant_jnt_pos, plant_base = settle(plant_angles, swing_base, seconds=1)
     
                 # use knee position from interpolant, just re-solve ankle
-                plant_angles = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
+                plant_angles, _, _ = iksolve(links, targets, plant_angles, free_joints, num_iters=3000, verbose=False)
                 env.set_position(plant_angles)
     
                 plant_traj[t] = plant_angles
@@ -352,16 +448,82 @@ if __name__ == "__main__":
                 (swing_traj, 4.),
                 (plant_traj, .3),
             )
-    
+
+        #### MAIN
+
+        results = []
+        for init_front in np.linspace(0.01*np.pi, np.pi/6, 5)
+            for shift_back in np.linspace(init_front, np.pi/6, 6)[1:]:
+                for push_back in np.linspace(shift_back, -np.pi/6, 6)[1:]:
+                    for push_front in np.linspace(-np.pi/6, np.pi/6, 20):
+
+        waypoints = get_waypoints(
+            # angle from vertical axis to front leg in initial stance
+            init_front = .02*np.pi,
+            # angle for abs_y joint in initial stance
+            init_abs_y = np.pi/16,
+            # angle from back leg to vertical axis in shift stance
+            shift_back = .05*np.pi,
+            # angle of torso towards support leg in shift stance
+            shift_torso = np.pi/5.75,
+            # angle from vertical axis to front leg in push stance
+            push_front = -.05*np.pi,
+            # angle from back leg to vertical axis in push stance
+            push_back = -.01*np.pi,
+            # whether to visualize
+            show = do_show,
+        )
+
+
+
+        # waypoints = get_waypoints(
+        #     # angle from vertical axis to front leg in initial stance
+        #     init_front = .02*np.pi,
+        #     # angle for abs_y joint in initial stance
+        #     init_abs_y = np.pi/16,
+        #     # angle from back leg to vertical axis in shift stance
+        #     shift_back = .05*np.pi,
+        #     # angle of torso towards support leg in shift stance
+        #     shift_torso = np.pi/5.75,
+        #     # angle from vertical axis to front leg in push stance
+        #     push_front = -.05*np.pi,
+        #     # angle from back leg to vertical axis in push stance
+        #     push_back = -.01*np.pi,
+        #     # whether to visualize
+        #     show = do_show,
+        # )
+
+        # for w, (angles, oojr, error) in enumerate(waypoints):
+
+        #     env.set_position(angles)
+        #     com_pos, jnt_pos, base = settle(angles, seconds=0)
+
+        #     pt.subplot(1, len(waypoints), w+1)
+        #     for j in range(len(jnt_pos)):
+        #         p = env.joint_parent[j]
+        #         if p == -1: continue
+        #         if env.joint_name[j][:2] == "l_":
+        #             color, zorder = .5, 0
+        #         else:
+        #             color, zorder = 0, 1
+        #         pt.plot(jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='o', linestyle='-', color=(color,)*3, zorder=zorder)
+
+        # pt.axis('equal')
+        # pt.show()
+
+        import sys
+        sys.exit()
+
+        
         # get waypoints
         trajs = get_traj(
-            # angle from y-axis to front leg in initial stance
+            # angle from vertical axis to front leg in initial stance
             init_front = .02*np.pi,
-            # angle from back leg to y-axis in shift stance
+            # angle from back leg to vertical axis in shift stance
             shift_back = .05*np.pi,
-            # angle from y-axis to front leg in push stance
+            # angle from vertical axis to front leg in push stance
             push_front = -.05*np.pi,
-            # angle from back leg to y-axis in push stance
+            # angle from back leg to vertical axis in push stance
             push_back = -.01*np.pi,
             num_waypoints = num_waypoints,
             show = do_show,
