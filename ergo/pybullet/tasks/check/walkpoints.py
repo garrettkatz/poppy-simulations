@@ -45,7 +45,7 @@ if __name__ == "__main__":
     
         def show_support(com_pos, jnt_pos, names):
             mx64com = jnt_pos[MX64IDX].mean(axis=0)
-            mx28com = jnt_pos[MX28IDX].mean(axis=0)    
+            mx28com = jnt_pos[MX28IDX].mean(axis=0)
             urdfcom = com_pos.mean(axis=0)
             support_polygon = np.array([jnt_pos[env.joint_index[name]] for name in names])
             pt.plot(support_polygon[:,0], support_polygon[:,1], 'ko-')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
             pt.text(mx28com[0], mx28com[1], 'mx28com')
             for name in names[:-1]:
                 idx = env.joint_index[name]
-                pt.text(jnt_pos[idx,0], jnt_pos[idx,1], name)            
+                pt.text(jnt_pos[idx,0], jnt_pos[idx,1], name)
             pt.axis('equal')
     
         def iksolve(links, targets, angles, free, num_iters=1000, verbose=False):
@@ -119,6 +119,7 @@ if __name__ == "__main__":
             base = env.get_base()
             return com_pos, jnt_pos, base
 
+        # right starts in front
         def get_waypoints(
             # angle from vertical axis to front leg in initial stance
             init_front,
@@ -178,9 +179,9 @@ if __name__ == "__main__":
 
             # push stance
             push_angles = env.angle_array({
-                'r_hip_y': -push_back,
-                'l_hip_y': push_front,
-                'r_ankle_y': +push_back,
+                'r_hip_y': -push_front,
+                'l_hip_y': push_back,
+                'r_ankle_y': +push_front,
                 'abs_x': shift_angles[env.joint_index['abs_x']],
                 'bust_x': shift_angles[env.joint_index['bust_x']],
                 'l_shoulder_x': shift_angles[env.joint_index['l_shoulder_x']],
@@ -451,11 +452,53 @@ if __name__ == "__main__":
 
         #### MAIN
 
-        results = []
-        for init_front in np.linspace(0.01*np.pi, np.pi/6, 5)
-            for shift_back in np.linspace(init_front, np.pi/6, 6)[1:]:
-                for push_back in np.linspace(shift_back, -np.pi/6, 6)[1:]:
-                    for push_front in np.linspace(-np.pi/6, np.pi/6, 20):
+        jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
+        ft_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel")]
+        xwid, yh = .3, .5
+
+        waypoints = get_waypoints(
+            # angle from vertical axis to front leg in initial stance
+            init_front = .15*np.pi,
+            # angle for abs_y joint in initial stance
+            init_abs_y = np.pi/16,
+            # angle from back leg to vertical axis in shift stance
+            shift_back = .05*np.pi,
+            # angle of torso towards support leg in shift stance
+            shift_torso = np.pi/5.75,
+            # angle from vertical axis to front leg in push stance
+            push_front = -.05*np.pi,
+            # angle from back leg to vertical axis in push stance
+            push_back = -.01*np.pi,
+            # whether to visualize
+            show = do_show,
+        )
+
+        pt.rcParams["text.usetex"] = True
+        pt.figure(figsize=(4, 3))
+        pt.subplot(1,2,1)
+        
+        angles, _, _ = waypoints[0]
+        env.set_position(angles)
+        com_pos, jnt_pos, base = settle(angles, seconds=0)
+
+        for j in jnt_idx:
+            p = env.joint_parent[j]
+            if p == -1: continue
+            color, zorder = (.5, 0) if env.joint_name[j][:2] == "l_" else (0, 1)
+            pt.plot(-jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
+        for lr in "lr":
+            color, zorder = (.5, 0) if lr == "l" else (0, 1)
+            j, p = env.joint_index[f"{lr}_toe"], env.joint_index[f"{lr}_heel"]
+            pt.plot(-jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
+
+        hip = jnt_pos[env.joint_index['r_hip_y']]
+        pt.plot([-hip[1], .1-hip[1]], [hip[2], .1+hip[2]], 'k.-')
+        pt.plot([-hip[1], -hip[1]], [.2+hip[2], 0], 'k:')
+        pt.text(-.05, .2, '$\\theta^{\\phi}_{\\ell}$')
+        pt.text(+.03, .2, '$\\theta^{\\phi}_{r}$')
+        pt.text(+.03, .5, '$\\theta^{\\phi}_{y}$')
+        pt.axis('off')
+        pt.axis('equal')
 
         waypoints = get_waypoints(
             # angle from vertical axis to front leg in initial stance
@@ -474,42 +517,81 @@ if __name__ == "__main__":
             show = do_show,
         )
 
+        pt.subplot(1,2,2)
+        angles, _, _ = waypoints[1]
+        env.set_position(angles)
+        com_pos, jnt_pos, base = settle(angles, seconds=0)
+        # compensate for urdf leg joint frame offsets
+        for lr in "lr":
+            for name in ('ankle_y', 'knee_y'):
+                jnt_pos[env.joint_index[f"{lr}_{name}"], 0] = jnt_pos[env.joint_index[f"{lr}_heel"], 0]
+        for j in range(len(jnt_pos)):
+            # skip gripper, head cam
+            if env.joint_name[j][2:] in ('gripper', 'wrist_x', 'fixed_tip', 'moving_tip'): continue
+            if env.joint_name[j] == 'head_cam': continue
+            color, zorder = (.5, 0) if env.joint_name[j][:2] == "l_" else (0, 1)
+            p = env.joint_parent[j]
+            if p == -1:
+                pt.plot([base[0][0], jnt_pos[j,0]], [base[0][2], jnt_pos[j,2]], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
+            else:
+                pt.plot(jnt_pos[[p,j],0], jnt_pos[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
 
+        pt.plot([base[0][0], base[0][0]], [base[0][2], .2+base[0][2]], 'k:')
+        pt.text(-.05, .56, '$\\theta^{\\phi}_{x}$')
+        pt.axis('off')
+        pt.axis('equal')
 
-        # waypoints = get_waypoints(
-        #     # angle from vertical axis to front leg in initial stance
-        #     init_front = .02*np.pi,
-        #     # angle for abs_y joint in initial stance
-        #     init_abs_y = np.pi/16,
-        #     # angle from back leg to vertical axis in shift stance
-        #     shift_back = .05*np.pi,
-        #     # angle of torso towards support leg in shift stance
-        #     shift_torso = np.pi/5.75,
-        #     # angle from vertical axis to front leg in push stance
-        #     push_front = -.05*np.pi,
-        #     # angle from back leg to vertical axis in push stance
-        #     push_back = -.01*np.pi,
-        #     # whether to visualize
-        #     show = do_show,
-        # )
+        pt.tight_layout()
+        pt.savefig('params.eps')
+        pt.show()
 
-        # for w, (angles, oojr, error) in enumerate(waypoints):
+        pt.rcParams['font.family'] = 'serif'
+        pt.figure(figsize=(8, 4))
+        for w, (angles, oojr, error) in enumerate(waypoints):
 
-        #     env.set_position(angles)
-        #     com_pos, jnt_pos, base = settle(angles, seconds=0)
+            env.set_position(angles)
+            com_pos, jnt_pos, base = settle(angles, seconds=0)
 
-        #     pt.subplot(1, len(waypoints), w+1)
-        #     for j in range(len(jnt_pos)):
-        #         p = env.joint_parent[j]
-        #         if p == -1: continue
-        #         if env.joint_name[j][:2] == "l_":
-        #             color, zorder = .5, 0
-        #         else:
-        #             color, zorder = 0, 1
-        #         pt.plot(jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='o', linestyle='-', color=(color,)*3, zorder=zorder)
+            pt.subplot(2, 4, w+1)
+            # for j in range(len(jnt_pos)):
+            for j in jnt_idx:
+                p = env.joint_parent[j]
+                if p == -1: continue
+                color, zorder = (.5, 0) if env.joint_name[j][:2] == "l_" else (0, 1)
+                pt.plot(-jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
+            for lr in "lr":
+                color, zorder = (.5, 0) if lr == "l" else (0, 1)
+                j, p = env.joint_index[f"{lr}_toe"], env.joint_index[f"{lr}_heel"]
+                pt.plot(-jnt_pos[[p,j],1], jnt_pos[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
 
-        # pt.axis('equal')
-        # pt.show()
+            foot = jnt_pos[ft_idx].mean(axis=0)
+            pt.ylim([foot[2]-.05, foot[2]+yh])
+            pt.xlim([foot[1]-xwid, foot[1]+xwid])
+            pt.title(('Initial', 'Shift', 'Push', 'Kick')[w])
+            pt.axis('off')
+            # pt.axis('equal')
+
+            pt.subplot(2, 4, 4+w+1)
+            CoM = com_pos.mean(axis=0)
+            names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
+            if w == 2: names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
+            if w == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
+            support_polygon = np.array([jnt_pos[env.joint_index[name]] for name in names])
+            pt.plot(support_polygon[:,0], support_polygon[:,1], 'k.-')
+            pt.plot(CoM[0], CoM[1], 'ko')
+            pt.text(CoM[0]+.007, CoM[1], 'CoM')
+            for name in names[:-1]:
+                idx = env.joint_index[name]
+                pt.text(jnt_pos[idx,0]+.015, jnt_pos[idx,1]-.01, name)
+            toe = jnt_pos[env.joint_index['r_toe']]
+            pt.xlim([toe[0]-.01, toe[0]+.15])
+            pt.ylim([toe[1]-.01, toe[1]+.2])
+            pt.axis('off')
+            # pt.axis('equal')
+
+        pt.tight_layout()
+        pt.savefig('waypoints.eps')
+        pt.show()
 
         import sys
         sys.exit()
