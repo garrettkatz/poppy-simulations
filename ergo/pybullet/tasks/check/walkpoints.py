@@ -15,11 +15,11 @@ if __name__ == "__main__":
     do_synthesis = True
     do_gait_figs = False
     do_filter = False
-    show_filter = True
-    do_show = False
-    num_waypoints = 20
-    # do_show = True
-    # num_waypoints = 3
+    show_filter = False
+    # do_show = False
+    # num_waypoints = 20
+    do_show = True
+    num_waypoints = 3
 
     pt.rcParams["text.usetex"] = True
     pt.rcParams['font.family'] = 'serif'
@@ -203,7 +203,8 @@ if __name__ == "__main__":
             links = [env.joint_index['l_toe']]
             targets = (push_jnt_pos[env.joint_index['r_toe']] - foot_to_foot)[np.newaxis]
             free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
-            push_angles, push_oojr, push_error = iksolve(links, targets, push_angles, free, num_iters=2000)
+            push_angles, push_oojr, push_error = iksolve(links, targets, push_angles, free, num_iters=2000, verbose=False)
+            # input(f"{push_angles[env.joint_index['l_hip_y']]} .")
             push_com_pos, push_jnt_pos, push_base = settle(push_angles, zero_base, seconds=0)
 
             return push_angles, push_oojr, push_error
@@ -215,7 +216,7 @@ if __name__ == "__main__":
             # set up heel target for swinging leg (reflect since back becomes front)
             links = [env.joint_index['l_heel']]
             targets = (push_jnt_pos[env.joint_index['r_heel']] + reflectx(foot_to_foot))[np.newaxis]
-            free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y', 'l_knee_y']]
+            free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]#, 'l_knee_y']]
             kick_angles, kick_oojr, kick_error = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
 
             return kick_angles, kick_oojr, kick_error
@@ -245,7 +246,7 @@ if __name__ == "__main__":
             init_angles, init_oojr, init_error, foot_to_foot = get_init_waypoint(init_front, init_abs_y, zero_base)
             shift_angles, shift_oojr, shift_error = get_shift_waypoint(shift_back, shift_torso, zero_base, foot_to_foot)
             push_angles, push_oojr, push_error = get_push_waypoint(push_front, push_back, shift_torso, zero_base, foot_to_foot)
-            kick_angles, kick_oojr, kick_error = get_kick_waypoint(push_angles, zero_base, foot_to_foot)
+            kick_angles, kick_oojr, kick_error = get_kick_waypoint(push_angles.copy(), zero_base, foot_to_foot)
 
             return (
                 (init_angles, init_oojr, init_error),
@@ -254,17 +255,39 @@ if __name__ == "__main__":
                 (kick_angles, kick_oojr, kick_error),
             )
 
-        def interpolate_waypoints():
-            pass
+        def interpolate_waypoints(start_angles, end_angles, num_waypoints, links, free, get_targets):
+            # at every trajectory timepoint, given links are constrained to targets while IK solves for free joints
+            # get_targets(jnt_pos) should return targets for given joint position
+
+            traj = np.empty((num_waypoints, env.num_joints))
+            for t,w in enumerate((1 + np.cos(np.linspace(0, np.pi, num_waypoints)))/2):
+
+                # interpolate angles and get current joint positions
+                angles = w*start_angles + (1-w)*end_angles
+                _, jnt_pos, _ = settle(angles, seconds=0)
+    
+                # solve for targets
+                targets = get_targets(jnt_pos)
+                angles, _, _ = iksolve(links, targets, angles, free, num_iters=2000)
+
+                # save trajectory
+                traj[t] = shift_angles
+
+            return traj
+
     
         def get_traj(
             # angle from vertical axis to front leg in initial stance
             init_front,
+            # angle for abs_y joint in initial stance
+            init_abs_y,
             # angle from back leg to vertical axis in shift stance
             shift_back,
-            # angle from vertical axis to front leg in push stance
+            # angle of torso towards support leg in shift stance
+            shift_torso,
+            # angle from vertical axis to left (swing) leg in push stance
             push_front,
-            # angle from back leg to vertical axis in push stance
+            # angle from right (support) leg to vertical axis in push stance
             push_back,
             # number of waypoints between each stance
             num_waypoints,
@@ -283,7 +306,7 @@ if __name__ == "__main__":
                 pt.show()
         
             #### INIT
-            init_abs_y = np.pi/16
+            # init_abs_y = np.pi/16
         
             init_angles = np.zeros(env.num_joints)
             init_angles[env.joint_index['r_hip_y']] = -init_front
@@ -309,7 +332,7 @@ if __name__ == "__main__":
     
             #### SHIFT
             shift_traj = np.empty((num_waypoints, env.num_joints))
-            shift_torso = np.pi/5.75
+            # shift_torso = np.pi/5.75
             # for t,w in enumerate(np.linspace(0, 1, num_waypoints)):
             for t,w in enumerate(.5 - .5*np.cos(np.linspace(0, np.pi, num_waypoints))):
     
@@ -434,14 +457,18 @@ if __name__ == "__main__":
             # set up heel target for swinging leg (reflect since back becomes front)
             links = [env.joint_index['l_heel']]
             targets = (push_jnt_pos[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
-            free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y', 'l_knee_y']]
-            swing_angles, _, _ = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=False)
+            free_joints = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]#, 'l_knee_y']]
+            swing_angles, _, _ = iksolve(links, targets, push_angles, free_joints, num_iters=3000, verbose=True)
             swing_com_pos, swing_jnt_pos, swing_base = settle(swing_angles, push_base, seconds=3)
+
+            # change ankle before knee for better clearance
+            swing_traj = np.stack((push_angles, swing_angles))
+            swing_traj[0,env.joint_index['l_ankle_y']] = swing_angles[env.joint_index['l_ankle_y']]
+
+            # # fast swing
+            # swing_traj = swing_angles[np.newaxis,:]
     
-            # fast swing
-            swing_traj = swing_angles[np.newaxis,:]
-    
-            print("SWING")
+            print("KICK")
             if show:
                 show_support(swing_com_pos, swing_jnt_pos, ['r_toe', 'r_ankle_y', 'r_heel', 'l_heel', 'r_toe'])
                 pt.show()
@@ -500,7 +527,8 @@ if __name__ == "__main__":
             jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
             ft_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel")]
             xwid, yh = .3, .5
-    
+
+            # param def fig
             waypoints = get_waypoints(
                 # angle from vertical axis to front leg in initial stance
                 init_front = .15*np.pi,
@@ -510,9 +538,9 @@ if __name__ == "__main__":
                 shift_back = .05*np.pi,
                 # angle of torso towards support leg in shift stance
                 shift_torso = np.pi/5.75,
-                # angle from vertical axis to front leg in push stance
+                # angle from vertical axis to front (right) leg in push stance
                 push_front = -.05*np.pi,
-                # angle from back leg to vertical axis in push stance
+                # angle from back (left) leg to vertical axis in push stance
                 push_back = -.01*np.pi,
                 # whether to visualize
                 show = do_show,
@@ -550,22 +578,40 @@ if __name__ == "__main__":
                 if w == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
                 print(within_support(com_pos, jnt_pos, names))
 
+            # gait waypoint fig
             waypoints = get_waypoints(
                 # angle from vertical axis to front leg in initial stance
-                init_front = .02*np.pi,
+                init_front = 0.03141593,#.15*np.pi,
                 # angle for abs_y joint in initial stance
                 init_abs_y = np.pi/16,
                 # angle from back leg to vertical axis in shift stance
-                shift_back = .05*np.pi,
+                shift_back = 0.13912767,#.05*np.pi,
                 # angle of torso towards support leg in shift stance
                 shift_torso = np.pi/5.75,
-                # angle from vertical axis to front leg in push stance
-                push_front = -.05*np.pi,
-                # angle from back leg to vertical axis in push stance
-                push_back = -.01*np.pi,
+                # angle from vertical axis to front (right) leg in push stance
+                push_front = 0.0448799,#-.05*np.pi,
+                # angle from back (left) leg to vertical axis in push stance
+                push_back = -0.15707963,#-.01*np.pi,
                 # whether to visualize
                 show = do_show,
             )
+            # orig fig
+            # waypoints = get_waypoints(
+            #     # angle from vertical axis to front leg in initial stance
+            #     init_front = .02*np.pi,
+            #     # angle for abs_y joint in initial stance
+            #     init_abs_y = np.pi/16,
+            #     # angle from back leg to vertical axis in shift stance
+            #     shift_back = .05*np.pi,
+            #     # angle of torso towards support leg in shift stance
+            #     shift_torso = np.pi/5.75,
+            #     # angle from vertical axis to front leg in push stance
+            #     push_front = -.05*np.pi,
+            #     # angle from back leg to vertical axis in push stance
+            #     push_back = -.01*np.pi,
+            #     # whether to visualize
+            #     show = do_show,
+            # )
     
             pt.subplot(1,2,2)
             angles, _, _ = waypoints[1]
@@ -643,20 +689,25 @@ if __name__ == "__main__":
             pt.savefig('waypoints.eps')
             pt.show()
 
-            env.close()
-            import sys
-            sys.exit()
+            # env.close()
+            # import sys
+            # sys.exit()
 
         ### do IK and CoM filter
         if do_filter or show_filter:
 
-            grid_sampling = 8
-            init_front_range = np.linspace(0.01*np.pi, np.pi/6, grid_sampling)
+            grid_sampling = 10
+            init_front_range = np.linspace(np.pi/100, np.pi/16, grid_sampling)
             init_abs_y = np.pi/16
-            shift_back_range = np.linspace(0.01*np.pi, np.pi/4, grid_sampling)
+            shift_back_range = np.linspace(np.pi/100, np.pi/4, grid_sampling)
             shift_torso = np.pi/5.75
-            push_front_range = np.linspace(-.1*np.pi, 0.05*np.pi, grid_sampling)
-            push_back_range = np.linspace(-np.pi/6, 0, grid_sampling)
+            push_back_range = np.linspace(-np.pi/4, np.pi/10, grid_sampling)
+            push_front_range = np.linspace(-np.pi/10, np.pi/10, grid_sampling)
+
+            print('init_front_range:', init_front_range)
+            print('shift_back_range:', shift_back_range)
+            print('push_back_range:', push_back_range)
+            print('push_front_range:', push_front_range)
 
         if do_filter:
 
@@ -685,7 +736,7 @@ if __name__ == "__main__":
             swing_oojr = np.zeros((len(foot_to_foot), len(push_front_range), len(push_back_range)), dtype=bool)
             swing_error = -np.ones((len(foot_to_foot), len(push_front_range), len(push_back_range)))
             swing_support = np.zeros((len(foot_to_foot), len(push_front_range), len(push_back_range)), dtype=bool)
-            # swing_clear = np.zeros((len(foot_to_foot), len(push_front_range), len(push_back_range)), dtype=bool)
+            swing_clear = np.ones((len(foot_to_foot), len(push_front_range), len(push_back_range)), dtype=bool)
             for i, init_front in enumerate(init_front_range):
                 for j, push_front in enumerate(push_front_range):
                     for k, push_back in enumerate(push_back_range):
@@ -700,18 +751,27 @@ if __name__ == "__main__":
                         com_pos, jnt_pos, _ = settle(kick_angles, zero_base, seconds=0)
                         kick_support = within_support(com_pos, jnt_pos, ('r_toe', 'r_heel', 'l_heel', 'r_toe'))
                         swing_support[i,j,k] = push_support and kick_support
-    
-                        # # check clearance
-                        # _, push_jnt_pos, _ = settle(push_angles, zero_base, seconds=0)
-                        # _, kick_jnt_pos, _ = settle(push_angles, zero_base, seconds=0)
 
-            with open('filter.pkl','wb') as f:
-                pk.dump((shift_oojr, shift_error, shift_support, swing_oojr, swing_error, swing_support), f)
+                        # check clearance at 8 intermediate points
+                        for w in np.linspace(0, 1, 10):
+                            angles = (1-w)*push_angles + w*kick_angles
+                            _, jnt_pos, _ = settle(angles, seconds=0)
+                            clear_names = ()
+                            if w > 0: clear_names += ('l_toe',)
+                            if w < 1: clear_names += ('l_heel',)
+                            for name in clear_names:
+                                if jnt_pos[env.joint_index[name],2] <= 0:
+                                    swing_clear[i,j,k] = False
+                                    break
+                            if not swing_clear[i,j,k]: break
+
+            with open(f'filter_{grid_sampling}.pkl','wb') as f:
+                pk.dump((shift_oojr, shift_error, shift_support, swing_oojr, swing_error, swing_support, swing_clear), f)
 
         if show_filter:
 
-            with open('filter.pkl','rb') as f:
-                (shift_oojr, shift_error, shift_support, swing_oojr, swing_error, swing_support) = pk.load(f)
+            with open(f'filter_{grid_sampling}.pkl','rb') as f:
+                (shift_oojr, shift_error, shift_support, swing_oojr, swing_error, swing_support, swing_clear) = pk.load(f)
 
             fig, ax = pt.subplots(1, 3, figsize=(4,1.6), constrained_layout=True)
             ax[0].imshow(~shift_oojr, cmap='gray')
@@ -729,12 +789,13 @@ if __name__ == "__main__":
             # fig.supylabel("$\\theta^{(\\mathbf{I})}_r$", rotation=0, fontsize=14)
             ax[1].set_xlabel("$\\theta^{(\\mathbf{S})}_\\ell$", fontsize=14)
             ax[0].set_ylabel("$\\theta^{(\\mathbf{I})}_\\ell$", rotation=0, fontsize=14)
-            pt.savefig('shift_search.eps')
+            pt.savefig(f'shift_search_{grid_sampling}.eps')
             pt.show()
 
             fig, ax = pt.subplots(2, len(init_front_range), figsize=(13,3.5), constrained_layout=True)
             for i, init_front in enumerate(init_front_range):
-                ax[0,i].imshow(~swing_oojr[i] & swing_support[i], cmap='gray')
+                feas = (~swing_oojr[i] & swing_support[i]).astype(int) + swing_clear[i]
+                ax[0,i].imshow(feas, vmax=2, cmap='gray')
                 im_i = ax[1,i].imshow(swing_error[i], vmin=0, vmax=swing_error.max(),cmap='gray')
                 if swing_error[i].max() == swing_error.max(): im = im_i
                 if i == 0:
@@ -752,7 +813,7 @@ if __name__ == "__main__":
             fig.supxlabel("$\\theta^{(\mathbf{P})}_\ell$")
             fig.supylabel("$\\theta^{(\mathbf{P})}_r$")
             fig.colorbar(im, ax=ax[:,-1])
-            pt.savefig('swing_search.eps')
+            pt.savefig(f'swing_search_{grid_sampling}.eps')
             pt.show()
 
             # pt.subplot(1,2,1)
@@ -774,16 +835,37 @@ if __name__ == "__main__":
             sys.exit()
         
         # get trajectory
+        # # worked once
+        # trajs = get_traj(
+        #     # angle from vertical axis to front leg in initial stance
+        #     init_front = .02*np.pi,
+        #     init_abs_y = np.pi/16,
+        #     # angle from back leg to vertical axis in shift stance
+        #     shift_back = .05*np.pi,
+        #     shift_torso = np.pi/5.75,
+        #     # angle from vertical axis to front leg in push stance
+        #     push_front = -.05*np.pi,
+        #     # angle from back leg to vertical axis in push stance
+        #     push_back = -.01*np.pi,
+        #     num_waypoints = num_waypoints,
+        #     show = do_show,
+        # )
+        # from grid search
         trajs = get_traj(
             # angle from vertical axis to front leg in initial stance
-            init_front = .02*np.pi,
+            init_front = 0.03141593,#.15*np.pi,
+            # angle for abs_y joint in initial stance
+            init_abs_y = np.pi/16,
             # angle from back leg to vertical axis in shift stance
-            shift_back = .05*np.pi,
-            # angle from vertical axis to front leg in push stance
-            push_front = -.05*np.pi,
-            # angle from back leg to vertical axis in push stance
-            push_back = -.01*np.pi,
+            shift_back = 0.13912767,#.05*np.pi,
+            # angle of torso towards support leg in shift stance
+            shift_torso = np.pi/10,
+            # angle from vertical axis to front (right) leg in push stance
+            push_front = 0.0448799,#-.05*np.pi,
+            # angle from back (left) leg to vertical axis in push stance
+            push_back = -0.5,#-0.15707963,#-.01*np.pi,
             num_waypoints = num_waypoints,
+            # whether to visualize
             show = do_show,
         )
         env.close()
@@ -827,7 +909,7 @@ if __name__ == "__main__":
 
     # visualize traj
     env = PoppyErgoEnv(pb.POSITION_CONTROL, show=True)
-    for _ in range(240*1): env.step(trajs[0][0][0])
+    for _ in range(240*5): env.step(trajs[0][0][0])
     pb.resetDebugVisualizerCamera(
         cameraDistance = 1,
         cameraYaw = -90,
@@ -835,7 +917,7 @@ if __name__ == "__main__":
         cameraTargetPosition = env.get_base()[0],
     )
 
-    hang = False
+    hang = True
     num_steps = 10
 
     input('.')
@@ -843,14 +925,15 @@ if __name__ == "__main__":
     for step in range(num_steps):
 
         if hang: input('.')
-        for (traj, speed) in trajs:
+        for p,(traj, speed) in enumerate(trajs):
+            print(p, traj[-1, [env.joint_index['l_ankle_y'], env.joint_index['l_knee_y']]])
             for t in range(len(traj)):
-                env.goto_position(traj[t], speed=speed, duration=None, hang=False)
-                if hang: input(f"{t}...")
+                env.goto_position(traj[t], speed=speed, duration=None, hang=(p==2))#False)
+                if hang and p > 2: input(f"{p},{t}...")
     
             # pause between motions and make sure converge to last waypoint
-            for _ in range(int(240*1.)): env.step(traj[-1])
-            if hang: input(f"pause...")
+            for _ in range(int(240*3.)): env.step(traj[-1])
+            if hang: input(f"phase {['shift','push','kick','init'][p]} pause...")
 
         # mirror for next step
         trajs = [(
