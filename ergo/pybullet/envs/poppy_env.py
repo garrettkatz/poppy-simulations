@@ -152,6 +152,18 @@ class PoppyEnv(object):
 
         return positions
 
+    # Return current Cartesian locations of joints and link CoMs
+    def forward_kinematics(self, angles=None):
+        # update to new angles if provided
+        if angles is not None: self.set_position(angles)
+        com_loc = np.zeros((self.num_joints, 3))
+        jnt_loc = np.zeros((self.num_joints, 3))
+        for idx in range(self.num_joints):
+            state = pb.getLinkState(self.robot_id, idx)
+            com_loc[idx] = state[0]
+            jnt_loc[idx] = state[4]
+        return com_loc, jnt_loc
+
     # Run IK, accounting for fixed joints
     def inverse_kinematics(self, link_indices, target_positions, num_iters=1000):
         # targets for link coordinates, not COM coordinates
@@ -174,4 +186,84 @@ class PoppyEnv(object):
                 a += 1
         
         return result
+
+    # Invert part of the kinematic chain while the rest is fixed
+    def partial_ik(self, links, targets, angles, free, num_iters=1000, verbose=False):
+        # links: list of joint indices, passed to self.inverse_kinematics
+        #   these joint (not CoM) locations must reach the targets
+        # targets: array of targets, passed to self.inverse_kinematics
+        #   these are the target locations for the links given above
+        # angles: a joint angle array
+        #   most of these angles must remain fixed in the solution
+        # free: a list of joint indices
+        #   locations of these joints are unconstrained
+        #   their parent joints are the only ones whose angles can be changed in the solution
+        # returns full solution joint angle array, out-of-joint-limit flag, and maximum absolute target error
+
+        # make sure links with targets are not also listed as free
+        assert not any([j in links for j in free])
+
+        # temporarily overwrite current joint angles
+        save_angles = self.get_position()
+        self.set_position(angles)
+
+        # keep all non-free joints' parents fixed by using their current locations as additional targets
+        _, all_targets = self.forward_kinematics()
+        all_targets[links] = targets
+        all_links = np.array([j for j in range(self.num_joints) if j not in free])
+        all_targets = all_targets[all_links]
+
+        # run IK with all constraints
+        angles = self.inverse_kinematics(all_links, all_targets, num_iters=num_iters)
+
+        # guard against occasional out-of-joint-limit solutions
+        # assert(all([
+        #     (self.joint_low[i] <= angles[i] <= self.joint_high[i]) or self.joint_fixed[i]
+        #     for i in range(self.num_joints)]))
+        oojl = False
+        for i in range(self.num_joints):
+            if not ((self.joint_low[i] <= angles[i] <= self.joint_high[i]) or self.joint_fixed[i]):
+                if verbose:
+                    print(f"{self.joint_name[i]}: {angles[i]} not in [{self.joint_low[i]}, {self.joint_high[i]}]!")
+                oojl = True
+        if oojl and verbose: input('uh oh...')
+
+        # measure constraint error
+        self.set_position(angles)
+        _, all_actual = self.forward_kinematics()
+        all_actual = all_actual[all_links]
+        error = np.fabs(all_targets - all_actual).max()
+
+        if verbose:
+            print('iksolve errors:')
+            print([self.joint_name[i] for i in range(self.num_joints) if i not in free])
+            print(all_targets - all_actual)
+            print(error)
+
+        # restore original angles
+        self.set_position(save_angles)
+
+        # return result
+        return angles, oojl, error
+
+    # assign new pose and run simulation steps to gauge stability
+    def settle(self, angles, base=None, seconds=1):
+        # base: if not provided, use current base
+        # seconds: simulation time, set to 0 to skip simulation
+        # returns locations of link CoMs, joints, and base
+
+        # set pose
+        self.set_position(angles)
+        if base is not None: self.set_base(*base)
+
+        # simulate to equilibrium
+        # step duration = control_period * timestep
+        # num steps = duration / step duration
+        num_steps = seconds / (self.control_period * self.timestep)
+        for _ in range(int(num_steps)): self.step(angles)
+
+        # return pose at equilibrium
+        com_loc, jnt_loc = self.forward_kinematics()
+        base = self.get_base()
+        return com_loc, jnt_loc, base
 
