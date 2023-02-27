@@ -129,6 +129,16 @@ class PoppyEnv(object):
             name: angle_array[j] * 180/np.pi
             for j, name in enumerate(self.joint_index)}
 
+    # convert trajectory of radian angle arrays to pypot degree angle dictionaries
+    #     trajectory[t]: (duration, target angle array)
+    def get_pypot_trajectory(self, trajectory):
+    
+        pypot_trajectory = []
+        for (duration, angles) in trajectory:
+            angle_dict = self.angle_dict(angles)
+            pypot_trajectory.append((duration, angle_dict))
+        return tuple(pypot_trajectory)
+
     # pypot-style command, goes to target joint position with given speed
     # target is a joint angle array
     # speed is desired joint speed
@@ -152,17 +162,36 @@ class PoppyEnv(object):
 
         return positions
 
-    # Return current Cartesian locations of joints and link CoMs
+    # Return current Cartesian locations of joints
     def forward_kinematics(self, angles=None):
         # update to new angles if provided
         if angles is not None: self.set_position(angles)
-        com_loc = np.zeros((self.num_joints, 3))
+
         jnt_loc = np.zeros((self.num_joints, 3))
         for idx in range(self.num_joints):
-            state = pb.getLinkState(self.robot_id, idx)
-            com_loc[idx] = state[0]
-            jnt_loc[idx] = state[4]
-        return com_loc, jnt_loc
+            link_state = pb.getLinkState(self.robot_id, idx)
+            jnt_loc[idx] = link_state[4]
+
+        return jnt_loc
+
+    # Return current center of mass
+    def center_of_mass(self, angles=None):
+        # update to new angles if provided
+        if angles is not None: self.set_position(angles)
+
+        # initialize from base
+        total_mass = pb.getDynamicsInfo(self.robot_id, -1)[0]
+        com_loc = np.array(self.get_base()[0]) * total_mass
+
+        # accumulate over links
+        for idx in range(self.num_joints):
+            link_com = pb.getLinkState(self.robot_id, idx)[0]
+            link_mass = pb.getDynamicsInfo(self.robot_id, idx)[0]
+
+            com_loc += np.array(link_com) * link_mass
+            total_mass += link_mass
+
+        return com_loc / total_mass
 
     # Run IK, accounting for fixed joints
     def inverse_kinematics(self, link_indices, target_positions, num_iters=1000):
@@ -208,7 +237,7 @@ class PoppyEnv(object):
         self.set_position(angles)
 
         # keep all non-free joints' parents fixed by using their current locations as additional targets
-        _, all_targets = self.forward_kinematics()
+        all_targets = self.forward_kinematics()
         all_targets[links] = targets
         all_links = np.array([j for j in range(self.num_joints) if j not in free])
         all_targets = all_targets[all_links]
@@ -230,7 +259,7 @@ class PoppyEnv(object):
 
         # measure constraint error
         self.set_position(angles)
-        _, all_actual = self.forward_kinematics()
+        all_actual = self.forward_kinematics()
         all_actual = all_actual[all_links]
         error = np.fabs(all_targets - all_actual).max()
 
@@ -263,7 +292,8 @@ class PoppyEnv(object):
         for _ in range(int(num_steps)): self.step(angles)
 
         # return pose at equilibrium
-        com_loc, jnt_loc = self.forward_kinematics()
+        CoM = self.center_of_mass()
+        jnt_loc = self.forward_kinematics()
         base = self.get_base()
-        return com_loc, jnt_loc, base
+        return CoM, jnt_loc, base
 

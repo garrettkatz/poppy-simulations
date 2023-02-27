@@ -13,12 +13,11 @@ from ergo import PoppyErgoEnv
 def reflectx(vec):
     return vec * np.array([-1, +1, +1]) # reflect vec through yz plane for when swing foot becomes support
 
-def within_support(com_loc, jnt_loc, support_names):
+def within_support(env, CoM, jnt_loc, support_names):
     # names should be counter-clockwise vertices around support polygon
-    urdfcom = com_loc.mean(axis=0)[:2]
     poly = np.array([jnt_loc[env.joint_index[name], :2] for name in support_names])
     for n in range(len(support_names)-1):
-        uc = urdfcom - poly[n] # vertex to point
+        uc = CoM[:2] - poly[n] # vertex to point
         uv = poly[n+1] - poly[n] # vertex to next vertex
         un = uv[[1, 0]] * np.array([-1, 1]) # edge normal
         if (uc*un).sum() > 0: return False
@@ -34,7 +33,7 @@ def get_init_waypoint(env, init_flat, init_abs_y):
         'l_ankle_y': -init_flat,
         'abs_y': init_abs_y,
     }, convert=False)
-    _, jnt_loc = env.forward_kinematics(init_angles)
+    jnt_loc = env.forward_kinematics(init_angles)
 
     init_oojl = False
     init_error = 0
@@ -57,7 +56,7 @@ def get_shift_waypoint(env, shift_swing, shift_torso, foot_to_foot):
         'l_shoulder_x': +shift_torso,
         'r_shoulder_x': -shift_torso,
     }, convert=False)
-    _, jnt_loc = env.forward_kinematics(shift_angles)
+    jnt_loc = env.forward_kinematics(shift_angles)
 
     # set up front toe/heel target
     links = [env.joint_index[name] for name in ['r_toe','r_heel']]
@@ -67,7 +66,7 @@ def get_shift_waypoint(env, shift_swing, shift_torso, foot_to_foot):
     ))
     free = [env.joint_index[name] for name in ['r_knee_y', 'r_ankle_y']]
     shift_angles[env.joint_index['r_knee_y']] = 0.1 # to avoid out-of-joint-limit errors
-    shift_angles, shift_oojl, shift_error = env.partial_ik(links, targets, shift_angles, free, num_iters=2000)
+    shift_angles, shift_oojl, shift_error = env.partial_ik(links, targets, shift_angles, free, num_iters=3000)
 
     return shift_angles, shift_oojl, shift_error
 
@@ -83,7 +82,7 @@ def get_push_waypoint(env, push_flat, push_swing, shift_torso, foot_to_foot):
         'l_shoulder_x': +shift_torso,
         'r_shoulder_x': -shift_torso,
     }, convert=False)
-    _, jnt_loc = env.forward_kinematics(push_angles)
+    jnt_loc = env.forward_kinematics(push_angles)
 
     # set up back toe target
     links = [env.joint_index['l_toe']]
@@ -95,7 +94,7 @@ def get_push_waypoint(env, push_flat, push_swing, shift_torso, foot_to_foot):
 
 def get_kick_waypoint(env, push_angles, foot_to_foot):
 
-    _, jnt_loc = env.forward_kinematics(push_angles)
+    jnt_loc = env.forward_kinematics(push_angles)
 
     # set up heel target for swinging leg (reflect since swing becomes flat)
     links = [env.joint_index['l_heel']]
@@ -133,6 +132,97 @@ def get_waypoints(env,
         (kick_angles, kick_oojl, kick_error),
     )
 
+# check waypoint constraints (in joint limits, max IK error, CoM in support polygon, clearance during kick)
+def check_waypoints(env, waypoints):
+    waypoint_angles, oojls, errors = zip(*waypoints)
+
+    in_limits = not any(oojls)
+    max_error = max(errors)
+
+    com_support = True
+    for w, angles in enumerate(waypoint_angles):
+
+        if w <= 1: support_names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
+        if w == 2: support_names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
+        if w == 3: support_names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
+
+        jnt_loc = env.forward_kinematics(angles)
+        CoM = env.center_of_mass(angles)
+        com_support = com_support and within_support(env, CoM, jnt_loc, support_names)
+
+    # clearance during kick
+    kick_jnt_loc = env.forward_kinematics(waypoint_angles[3])
+    toe_loc, heel_loc, knee_loc = (kick_jnt_loc[env.joint_index[name]] for name in ['l_toe', 'l_heel', 'l_knee_y'])
+    toe_radius = np.linalg.norm(toe_loc - knee_loc)
+    heel_radius = np.linalg.norm(heel_loc - knee_loc)
+    clearance = (toe_radius < heel_radius) and (heel_loc[1] > knee_loc[1])
+
+    return in_limits, max_error, com_support, clearance
+
+def render_legs(env, jnt_loc, jnt_idx, zoffset=0, alpha=1):
+    for j in jnt_idx:
+        p = env.joint_parent[j]
+        if p == -1: continue
+        color, zorder = (.5, 0) if env.joint_name[j][:2] == "l_" else (0, 1)
+        color = (color, color, color, alpha)
+        pt.plot(-jnt_loc[[p,j],1], jnt_loc[[p,j],2], marker='.', linestyle='-', color=color, zorder=zorder+zoffset)
+    for lr in "lr":
+        color, zorder = (.5, 0) if lr == "l" else (0, 1)
+        color = (color, color, color, alpha)
+        j, p = env.joint_index[f"{lr}_toe"], env.joint_index[f"{lr}_heel"]
+        pt.plot(-jnt_loc[[p,j],1], jnt_loc[[p,j],2], marker='.', linestyle='-', color=color, zorder=zorder+zoffset)
+
+def phase_waypoint_figure(env, waypoints, fname=None):
+
+    jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
+    ft_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel")]
+    xwid, yh = .3, .5
+
+    in_limits, max_error, com_support, clearance, = check_waypoints(env, waypoints)
+    print(f"in_limits = {in_limits}")
+    print(f"max_error = {max_error}")
+    print(f"com_support = {com_support}")
+    print(f"clearance = {clearance}")
+
+    pt.figure(figsize=(8, 4))
+    for w, (angles, oojr, error) in enumerate(waypoints):
+        print(angles[env.joint_index['l_ankle_y']])
+
+        jnt_loc = env.forward_kinematics(angles)
+        CoM = env.center_of_mass(angles)
+
+        pt.subplot(2, 4, w+1)
+        render_legs(env, jnt_loc, jnt_idx)
+
+        foot = jnt_loc[ft_idx].mean(axis=0)
+        pt.ylim([foot[2]-.05, foot[2]+yh])
+        pt.xlim([foot[1]-xwid, foot[1]+xwid])
+        pt.title(('Initial', 'Shift', 'Push', 'Kick')[w])
+        pt.axis('off')
+        # pt.axis('equal')
+
+        pt.subplot(2, 4, 4+w+1)
+        names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
+        if w == 2: names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
+        if w == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
+        support_polygon = np.array([jnt_loc[env.joint_index[name]] for name in names])
+        pt.plot(support_polygon[:,0], support_polygon[:,1], 'k.-')
+        pt.plot(CoM[0], CoM[1], 'ko')
+        pt.text(CoM[0]+.007, CoM[1], 'CoM')
+        for name in names[:-1]:
+            idx = env.joint_index[name]
+            pt.text(jnt_loc[idx,0]+.015, jnt_loc[idx,1]-.01, name)
+        toe = jnt_loc[env.joint_index['r_toe']]
+        pt.xlim([toe[0]-.01, toe[0]+.15])
+        pt.ylim([toe[1]-.01, toe[1]+.2])
+        pt.title(f"CoM {within_support(env, CoM, jnt_loc, names)}, {error:.4f}")
+        pt.axis('off')
+        # pt.axis('equal')
+
+    pt.tight_layout()
+    if fname is not None: pt.savefig(fname)
+    pt.show()
+
 if __name__ == "__main__":
 
     do_show = False
@@ -152,17 +242,13 @@ if __name__ == "__main__":
         cameraTargetPosition = base[0],
     )
 
-    jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
-    ft_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel")]
-    xwid, yh = .3, .5
-
     if do_gait_param_fig:
 
         init_angles, _, _, f2f, = get_init_waypoint(env, init_flat = np.pi/6, init_abs_y=np.pi/4)
-        _, init_jnt_loc = env.forward_kinematics(init_angles)
+        init_jnt_loc = env.forward_kinematics(init_angles)
 
         shift_angles, shift_oojl, shift_error = get_shift_waypoint(env, shift_swing=np.pi/4, shift_torso=np.pi/4, foot_to_foot=f2f)
-        _, shift_jnt_loc = env.forward_kinematics(shift_angles)
+        shift_jnt_loc = env.forward_kinematics(shift_angles)
 
         pt.figure(figsize=(4, 2))
         pt.subplot(1,2,1)
@@ -244,49 +330,5 @@ if __name__ == "__main__":
             push_swing = -.08*np.pi,#-.01*np.pi,
         )
 
-        pt.figure(figsize=(8, 4))
-        for w, (angles, oojr, error) in enumerate(waypoints):
-            print(angles[env.joint_index['l_ankle_y']])
+        phase_waypoint_figure(env, waypoints, 'waypoints.eps')
 
-            com_loc, jnt_loc = env.forward_kinematics(angles)
-
-            pt.subplot(2, 4, w+1)
-            for j in jnt_idx:
-                p = env.joint_parent[j]
-                if p == -1: continue
-                color, zorder = (.5, 0) if env.joint_name[j][:2] == "l_" else (0, 1)
-                pt.plot(-jnt_loc[[p,j],1], jnt_loc[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
-            for lr in "lr":
-                color, zorder = (.5, 0) if lr == "l" else (0, 1)
-                j, p = env.joint_index[f"{lr}_toe"], env.joint_index[f"{lr}_heel"]
-                pt.plot(-jnt_loc[[p,j],1], jnt_loc[[p,j],2], marker='.', linestyle='-', color=(color,)*3, zorder=zorder)
-
-            foot = jnt_loc[ft_idx].mean(axis=0)
-            pt.ylim([foot[2]-.05, foot[2]+yh])
-            pt.xlim([foot[1]-xwid, foot[1]+xwid])
-            pt.title(('Initial', 'Shift', 'Push', 'Kick')[w])
-            pt.axis('off')
-            # pt.axis('equal')
-
-            pt.subplot(2, 4, 4+w+1)
-            CoM = com_loc.mean(axis=0)
-            names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
-            if w == 2: names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
-            if w == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
-            support_polygon = np.array([jnt_loc[env.joint_index[name]] for name in names])
-            pt.plot(support_polygon[:,0], support_polygon[:,1], 'k.-')
-            pt.plot(CoM[0], CoM[1], 'ko')
-            pt.text(CoM[0]+.007, CoM[1], 'CoM')
-            for name in names[:-1]:
-                idx = env.joint_index[name]
-                pt.text(jnt_loc[idx,0]+.015, jnt_loc[idx,1]-.01, name)
-            toe = jnt_loc[env.joint_index['r_toe']]
-            pt.xlim([toe[0]-.01, toe[0]+.15])
-            pt.ylim([toe[1]-.01, toe[1]+.2])
-            pt.title(f"CoM {within_support(com_loc, jnt_loc, names)}, {error:.4f}")
-            pt.axis('off')
-            # pt.axis('equal')
-
-        pt.tight_layout()
-        pt.savefig('waypoints.eps')
-        pt.show()

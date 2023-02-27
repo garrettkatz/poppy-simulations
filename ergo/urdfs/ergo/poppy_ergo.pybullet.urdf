@@ -1207,22 +1207,22 @@
 
         <!-- toes and heels start here -->
         <joint name="l_toe" type="fixed">
-            <origin rpy="0 0 0" xyz="-0.01781701 -0.03594633  0.10130183"/>
+            <origin rpy="0 0 0" xyz="-0.01774795 -0.03446821  0.10293077"/>
             <parent link="l_foot"/>
             <child link="l_toe"/>
         </joint>
         <joint name="l_heel" type="fixed">
-            <origin rpy="0 0 0" xyz="-0.02091397 -0.03580464 -0.04469591"/>
+            <origin rpy="0 0 0" xyz="-0.0210066 -0.03570167 -0.04526183"/>
             <parent link="l_foot"/>
             <child link="l_heel"/>
         </joint>
         <joint name="r_toe" type="fixed">
-            <origin rpy="0 0 0" xyz="0.01781701 -0.03594633  0.10130183"/>
+            <origin rpy="0 0 0" xyz="0.01774795 -0.03446821  0.10293077"/>
             <parent link="r_foot"/>
             <child link="r_toe"/>
         </joint>
         <joint name="r_heel" type="fixed">
-            <origin rpy="0 0 0" xyz="0.02091397 -0.03580464 -0.04469591"/>
+            <origin rpy="0 0 0" xyz="0.0210066 -0.03570167 -0.04526183"/>
             <parent link="r_foot"/>
             <child link="r_heel"/>
         </joint>
