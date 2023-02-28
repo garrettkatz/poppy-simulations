@@ -39,11 +39,12 @@ def get_init_waypoint(env, init_flat, init_abs_y):
     init_error = 0
 
     # translational offset from back to front toes/heels in init stance
-    foot_to_foot = jnt_loc[env.joint_index['r_toe']] - jnt_loc[env.joint_index['l_toe']]
+    toe_to_toe = jnt_loc[env.joint_index['r_toe']] - jnt_loc[env.joint_index['l_toe']]
+    heel_to_heel = jnt_loc[env.joint_index['r_heel']] - jnt_loc[env.joint_index['l_heel']]
 
-    return init_angles, init_oojl, init_error, foot_to_foot
+    return init_angles, init_oojl, init_error, toe_to_toe, heel_to_heel
 
-def get_shift_waypoint(env, shift_swing, shift_torso, foot_to_foot):
+def get_shift_waypoint(env, shift_swing, shift_torso, toe_to_toe, heel_to_heel):
 
     # shift waypoint pose
     shift_angles = env.angle_array({
@@ -61,16 +62,16 @@ def get_shift_waypoint(env, shift_swing, shift_torso, foot_to_foot):
     # set up front toe/heel target
     links = [env.joint_index[name] for name in ['r_toe','r_heel']]
     targets = np.stack((
-        jnt_loc[env.joint_index['l_toe']] + foot_to_foot,
-        jnt_loc[env.joint_index['l_heel']] + foot_to_foot,
+        jnt_loc[env.joint_index['l_toe']] + toe_to_toe,
+        jnt_loc[env.joint_index['l_heel']] + heel_to_heel,
     ))
     free = [env.joint_index[name] for name in ['r_knee_y', 'r_ankle_y']]
     shift_angles[env.joint_index['r_knee_y']] = 0.1 # to avoid out-of-joint-limit errors
-    shift_angles, shift_oojl, shift_error = env.partial_ik(links, targets, shift_angles, free, num_iters=3000)
+    shift_angles, shift_oojl, shift_error = env.partial_ik(links, targets, shift_angles, free, num_iters=3000, resid_thresh=1e-7)
 
     return shift_angles, shift_oojl, shift_error
 
-def get_push_waypoint(env, push_flat, push_swing, shift_torso, foot_to_foot):
+def get_push_waypoint(env, push_flat, push_swing, shift_torso, toe_to_toe):
 
     # push stance
     push_angles = env.angle_array({
@@ -86,21 +87,21 @@ def get_push_waypoint(env, push_flat, push_swing, shift_torso, foot_to_foot):
 
     # set up back toe target
     links = [env.joint_index['l_toe']]
-    targets = (jnt_loc[env.joint_index['r_toe']] - foot_to_foot)[np.newaxis]
+    targets = (jnt_loc[env.joint_index['r_toe']] - toe_to_toe)[np.newaxis]
     free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
-    push_angles, push_oojl, push_error = env.partial_ik(links, targets, push_angles, free, num_iters=2000, verbose=False)
+    push_angles, push_oojl, push_error = env.partial_ik(links, targets, push_angles, free, num_iters=2000, resid_thresh=1e-7, verbose=False)
 
     return push_angles, push_oojl, push_error
 
-def get_kick_waypoint(env, push_angles, foot_to_foot):
+def get_kick_waypoint(env, push_angles, heel_to_heel):
 
     jnt_loc = env.forward_kinematics(push_angles)
 
     # set up heel target for swinging leg (reflect since swing becomes flat)
     links = [env.joint_index['l_heel']]
-    targets = (jnt_loc[env.joint_index['r_heel']] + reflectx(foot_to_foot))[np.newaxis]
+    targets = (jnt_loc[env.joint_index['r_heel']] + reflectx(heel_to_heel))[np.newaxis]
     free = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]
-    kick_angles, kick_oojl, kick_error = env.partial_ik(links, targets, push_angles, free, num_iters=3000, verbose=False)
+    kick_angles, kick_oojl, kick_error = env.partial_ik(links, targets, push_angles, free, num_iters=3000, resid_thresh=1e-7, verbose=False)
 
     return kick_angles, kick_oojl, kick_error
 
@@ -120,10 +121,10 @@ def get_waypoints(env,
     push_swing,
 ):
 
-    init_angles, init_oojl, init_error, foot_to_foot = get_init_waypoint(env, init_flat, init_abs_y)
-    shift_angles, shift_oojl, shift_error = get_shift_waypoint(env, shift_swing, shift_torso, foot_to_foot)
-    push_angles, push_oojl, push_error = get_push_waypoint(env, push_flat, push_swing, shift_torso, foot_to_foot)
-    kick_angles, kick_oojl, kick_error = get_kick_waypoint(env, push_angles, foot_to_foot)
+    init_angles, init_oojl, init_error, toe_to_toe, heel_to_heel = get_init_waypoint(env, init_flat, init_abs_y)
+    shift_angles, shift_oojl, shift_error = get_shift_waypoint(env, shift_swing, shift_torso, toe_to_toe, heel_to_heel)
+    push_angles, push_oojl, push_error = get_push_waypoint(env, push_flat, push_swing, shift_torso, toe_to_toe)
+    kick_angles, kick_oojl, kick_error = get_kick_waypoint(env, push_angles, heel_to_heel)
 
     return (
         (init_angles, init_oojl, init_error),
@@ -216,8 +217,8 @@ def phase_waypoint_figure(env, waypoints, fname=None):
         pt.xlim([toe[0]-.01, toe[0]+.15])
         pt.ylim([toe[1]-.01, toe[1]+.2])
         pt.title(f"CoM {within_support(env, CoM, jnt_loc, names)}, {error:.4f}")
+        pt.axis('equal')
         pt.axis('off')
-        # pt.axis('equal')
 
     pt.tight_layout()
     if fname is not None: pt.savefig(fname)

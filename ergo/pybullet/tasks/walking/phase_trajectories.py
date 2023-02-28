@@ -33,18 +33,68 @@ def get_direct_trajectories(env, waypoints):
     return trajectories
 
 def linearly_interpolate(direct_trajectories, num_points):
-    linear_trajectories = list(trajectories[:1])
-    for t in range(1, len(trajectories)):
+    linear_trajectories = []
+    for t in range(len(direct_trajectories)):
 
-        _, source = trajectories[t-1][-1]
-        duration, target = trajectories[t][-1]
+        _, source = direct_trajectories[t][-1]
+        duration, target = direct_trajectories[(t+1) % len(direct_trajectories)][-1]
+        if (t + 1) == len(direct_trajectories):
+            target = env.mirror_position(target)
 
         linear_trajectories.append([])
-        for alpha in np.linspace(1, 0, num_points)[1:]:
+        for alpha in np.linspace(1, 0, num_points):
             angles = alpha * source + (1 - alpha) * target
             linear_trajectories[t].append((duration / num_points, angles))
 
     return linear_trajectories
+
+def constrained_interpolate(direct_trajectories, num_points):
+    constrained_trajectories = []
+    for t in range(len(direct_trajectories)):
+
+        _, source = direct_trajectories[t][-1]
+        duration, target = direct_trajectories[(t+1) % len(direct_trajectories)][-1]
+        if (t + 1) == len(direct_trajectories):
+            target = env.mirror_position(target)
+
+        # translational offset from back to front toes/heels in target stance
+        jnt_loc = env.forward_kinematics(target)
+        toe_to_toe = jnt_loc[env.joint_index['r_toe']] - jnt_loc[env.joint_index['l_toe']]
+        heel_to_heel = jnt_loc[env.joint_index['r_heel']] - jnt_loc[env.joint_index['l_heel']]
+
+        constrained_trajectories.append([])
+        for a, alpha in enumerate(np.linspace(1, 0, num_points)):
+            angles = alpha * source + (1 - alpha) * target
+
+            # enforce constraints
+            jnt_loc = env.forward_kinematics(angles)
+            if t == 0: # shift to push
+                links = [env.joint_index['r_toe'], env.joint_index['r_heel']]
+                targets = np.stack((
+                    jnt_loc[env.joint_index['l_toe']] + toe_to_toe,
+                    jnt_loc[env.joint_index['l_heel']] + heel_to_heel,
+                ))
+                free = [env.joint_index[name] for name in ['r_knee_y', 'r_ankle_y']]
+                angles, _, _ = env.partial_ik(links, targets, angles, free, num_iters=2000, resid_thresh=1e-7, verbose=False)
+
+            if t == 1: # shift to push
+                links = [env.joint_index['l_toe']]
+                targets = (jnt_loc[env.joint_index['r_toe']] - toe_to_toe)[np.newaxis]
+                free = [env.joint_index[name] for name in ['l_heel', 'l_ankle_y']]
+                angles, _, _ = env.partial_ik(links, targets, angles, free, num_iters=2000, resid_thresh=1e-7, verbose=False)
+
+            if t == 4: # kick to mirrored init
+                links = [env.joint_index['l_heel']]
+                targets = (jnt_loc[env.joint_index['r_heel']] - heel_to_heel)[np.newaxis]
+                free = [env.joint_index[name] for name in ['l_toe', 'l_ankle_y']]
+                angles, _, _ = env.partial_ik(links, targets, angles, free, num_iters=2000, resid_thresh=1e-7, verbose=False)
+
+            # last of t is first of t+1 so first duration is 0
+            dur = 0 if a == 0 else (duration / (num_points - 1))
+
+            constrained_trajectories[t].append((dur, angles))
+
+    return constrained_trajectories
 
 def extend_mirrored_trajectory(env, trajectories):
 
@@ -57,22 +107,24 @@ def extend_mirrored_trajectory(env, trajectories):
 
     return trajectories
 
-def phase_trajectory_figure(env, trajectories):
+def phase_trajectory_figure(env, trajectories, fname=None):
     jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
-    for n, trajectory in enumerate(trajectories[1:]):
-        pt.subplot(1, len(trajectories)-1, n+1)
+    for n, trajectory in enumerate(trajectories):
+        pt.subplot(1, len(trajectories), n+1)
         for t, (duration, angles) in enumerate(trajectory):
+            # if n == 0 and 0 < t < len(trajectory)-1: continue
             jnt_loc = env.forward_kinematics(angles)
             jnt_loc -= jnt_loc[env.joint_index['r_toe']]
             render_legs(env, jnt_loc, jnt_idx, zoffset=2*t, alpha = (t+1) / len(trajectory))
         pt.axis('equal')
         pt.axis('off')
+    if fname is not None: pt.savefig(fname)
     pt.show()
 
 if __name__ == "__main__":
 
     show_traj = True
-    run_traj = False
+    run_traj = True
     num_cycles = 10
 
     env = PoppyErgoEnv(pb.POSITION_CONTROL, show=False)
@@ -96,9 +148,10 @@ if __name__ == "__main__":
 
     trajectories = get_direct_trajectories(env, waypoints)
 
-    trajectories = linearly_interpolate(trajectories, num_points=10)
+    # trajectories = linearly_interpolate(trajectories, num_points=5)
+    trajectories = constrained_interpolate(trajectories, num_points=5)
     if show_traj:
-        phase_trajectory_figure(env, trajectories)
+        phase_trajectory_figure(env, trajectories, fname='transitions.pdf')
 
     trajectories = extend_mirrored_trajectory(env, trajectories)
     pypot_trajectories = tuple(map(env.get_pypot_trajectory, trajectories))
@@ -109,13 +162,15 @@ if __name__ == "__main__":
     if run_traj:
 
         env = PoppyErgoEnv(pb.POSITION_CONTROL, show=True)
-        env.settle(waypoints[0][0], seconds=3)
+        env.settle(waypoints[0][0], seconds=2)
         input('...')
 
         for cycle in range(num_cycles):
-            for trajectory in trajectories[(1 if cycle == 0 else 0):]:
+            # for trajectory in trajectories[(1 if cycle == 0 else 0):]:
+            for t, trajectory in enumerate(trajectories):
+                # input(f"{t}")
                 for (duration, angles) in trajectory:
                     env.goto_position(angles, duration=duration)
-                # input('...')
+                    # input('..')
     
         env.close()

@@ -35,7 +35,7 @@ class PoppyEnv(object):
         pb.setTimeStep(timestep)
         pb.setGravity(0, 0, -9.81)
         pb.setAdditionalSearchPath(getDataPath())
-        pb.loadURDF("plane.urdf")
+        self.ground_id = pb.loadURDF("plane.urdf")
         
         # use overridden loading logic
         self.robot_id = self.load_urdf(use_fixed_base, use_self_collision)
@@ -194,7 +194,7 @@ class PoppyEnv(object):
         return com_loc / total_mass
 
     # Run IK, accounting for fixed joints
-    def inverse_kinematics(self, link_indices, target_positions, num_iters=1000):
+    def inverse_kinematics(self, link_indices, target_positions, num_iters=1000, resid_thresh=1e-4):
         # targets for link coordinates, not COM coordinates
 
         angles = pb.calculateInverseKinematics2(
@@ -203,7 +203,7 @@ class PoppyEnv(object):
             target_positions,
             # lowerLimits = [self.joint_low[j] for j in range(self.num_joints) if not self.joint_fixed[j]],
             # upperLimits = [self.joint_high[j] for j in range(self.num_joints) if not self.joint_fixed[j]],
-            # residualThreshold=1e-4, # default 1e-4 not enough for ergo jr
+            residualThreshold=resid_thresh, # default 1e-4 not enough for ergo jr
             maxNumIterations=num_iters, # default 20 usually not enough
         )
 
@@ -217,7 +217,7 @@ class PoppyEnv(object):
         return result
 
     # Invert part of the kinematic chain while the rest is fixed
-    def partial_ik(self, links, targets, angles, free, num_iters=1000, verbose=False):
+    def partial_ik(self, links, targets, angles, free, num_iters=1000, resid_thresh=1e-4, verbose=False):
         # links: list of joint indices, passed to self.inverse_kinematics
         #   these joint (not CoM) locations must reach the targets
         # targets: array of targets, passed to self.inverse_kinematics
