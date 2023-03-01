@@ -1027,11 +1027,13 @@
 		<axis xyz="1 0 0"></axis>
 		<limit effort="3.1" lower="-0.785398163397" upper="0.785398163397" velocity="7.0"></limit>
 	</joint>
+        <!-- abs_y and _x might be mislabeled?? -->
 	<joint name="abs_y" type="revolute">
 		<origin xyz="0 -0.017 0.061" rpy="1.5707963267949 0 0"></origin>
 		<parent link="pelvis"></parent>
 		<child link="abs_motors"></child>
 		<axis xyz="1 0 0"></axis>
+		<!-- <limit effort="7.3" lower="-0.785398163397" upper="0.785398163397" velocity="8.2"></limit> -->
 		<limit effort="7.3" upper="0.872664625997" lower="-0.209439510239" velocity="8.2"></limit>
 	</joint>
 	<joint name="abs_x" type="revolute">
@@ -1039,6 +1041,7 @@
 		<parent link="abs_motors"></parent>
 		<child link="abdomen"></child>
 		<axis xyz="0 0 1"></axis>
+		<!-- <limit effort="7.3" upper="0.872664625997" lower="-0.209439510239" velocity="8.2"></limit> -->
 		<limit effort="7.3" lower="-0.785398163397" upper="0.785398163397" velocity="8.2"></limit>
 	</joint>
 	<joint name="abs_z" type="revolute">

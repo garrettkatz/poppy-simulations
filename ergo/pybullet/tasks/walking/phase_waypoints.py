@@ -143,20 +143,35 @@ def check_waypoints(env, waypoints):
     com_support = True
     for w, angles in enumerate(waypoint_angles):
 
-        if w <= 1: support_names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
-        if w == 2: support_names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
-        if w == 3: support_names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
+        if w <= 1: support_names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_heel', 'l_ankle_y', 'l_toe', 'r_toe')
+        if w == 2: support_names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_toe', 'r_toe')
+        if w == 3: support_names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_heel', 'r_toe')
 
         jnt_loc = env.forward_kinematics(angles)
         CoM = env.center_of_mass(angles)
         com_support = com_support and within_support(env, CoM, jnt_loc, support_names)
 
     # clearance during kick
-    kick_jnt_loc = env.forward_kinematics(waypoint_angles[3])
-    toe_loc, heel_loc, knee_loc = (kick_jnt_loc[env.joint_index[name]] for name in ['l_toe', 'l_heel', 'l_knee_y'])
-    toe_radius = np.linalg.norm(toe_loc - knee_loc)
-    heel_radius = np.linalg.norm(heel_loc - knee_loc)
-    clearance = (toe_radius < heel_radius) and (heel_loc[1] > knee_loc[1])
+    push_angles, kick_angles = waypoint_angles[2:4]
+    push_kick_angles = push_angles.copy()
+    push_kick_angles[env.joint_index['l_ankle_y']] = kick_angles[env.joint_index['l_ankle_y']]
+
+    push_kick_jnt_loc = env.forward_kinematics(push_kick_angles)
+    kick_jnt_loc = env.forward_kinematics(kick_angles)
+
+    knee, ground = (kick_jnt_loc[env.joint_index[name]] for name in ['l_knee_y', 'r_toe'])
+    old_toe, old_heel = (push_kick_jnt_loc[env.joint_index[name]] for name in ['l_toe', 'l_heel'])
+    new_toe, new_heel = (kick_jnt_loc[env.joint_index[name]] for name in ['l_toe', 'l_heel'])
+
+    toe_radius = np.linalg.norm(old_toe - knee)
+    heel_radius = np.linalg.norm(old_heel - knee)
+
+    clearance = True
+    if (old_toe[1] > knee[1] > new_toe[1]) and (ground[2] > (knee[2] - toe_radius)): clearance = False
+    if (knee[1] > old_toe[1] > new_toe[1]) and (ground[2] > old_toe[2]): clearance = False
+    if (knee[1] > new_heel[1]) or (ground[2] > old_heel[2]): clearance = False
+
+    # clearance = (toe_radius < heel_radius) and (heel_loc[1] > knee[1])
 
     return in_limits, max_error, com_support, clearance
 
@@ -203,6 +218,9 @@ def phase_waypoint_figure(env, waypoints, fname=None):
         # pt.axis('equal')
 
         pt.subplot(2, 4, 4+w+1)
+        # names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_heel', 'l_ankle_y', 'l_toe', 'r_toe')
+        # if w == 2: names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_toe', 'r_toe')
+        # if w == 3: names = ('r_toe', 'r_ankle_y', 'r_heel', 'l_heel', 'r_toe')
         names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
         if w == 2: names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
         if w == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
@@ -324,11 +342,11 @@ if __name__ == "__main__":
             # angle from swing leg to vertical axis in shift stance
             shift_swing = .05*np.pi,
             # angle of torso towards support leg in shift stance
-            shift_torso = np.pi/5.75,
+            shift_torso = np.pi/6,
             # angle from vertical axis to flat leg in push stance
-            push_flat = -.02*np.pi,#-.05*np.pi,
+            push_flat = -.01*np.pi,#-.05*np.pi,
             # angle from swing leg to vertical axis in push stance
-            push_swing = -.08*np.pi,#-.01*np.pi,
+            push_swing = -.10*np.pi,#-.01*np.pi,
         )
 
         phase_waypoint_figure(env, waypoints, 'waypoints.eps')
