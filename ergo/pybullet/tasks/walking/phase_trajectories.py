@@ -145,23 +145,44 @@ def make_arccos_durations(trajectory):
 if __name__ == "__main__":
 
     show_traj = True
-    run_traj = False
+    run_traj = True
     num_cycles = 10
 
     env = PoppyErgoEnv(pb.POSITION_CONTROL, show=False)
+
+    # # original
+    # traj_fname = 'pypot_traj1.pkl'
+    # waypoints = get_waypoints(env,
+    #     # angle from vertical axis to flat leg in initial stance
+    #     init_flat = .02*np.pi,
+    #     # angle for abs_y joint in initial stance
+    #     init_abs_y = np.pi/16,
+    #     # angle from swing leg to vertical axis in shift stance
+    #     shift_swing = .05*np.pi,
+    #     # angle of torso towards support leg in shift stance
+    #     shift_torso = np.pi/5,
+    #     # angle from vertical axis to flat leg in push stance
+    #     push_flat = -.00*np.pi,#-.05*np.pi,
+    #     # angle from swing leg to vertical axis in push stance
+    #     push_swing = -.10*np.pi,#-.01*np.pi,
+    # )
+    # # (..., (angles, oojl, error), ...)
+
+    # numerical improved
+    traj_fname = 'pypot_traj_star.pkl'
     waypoints = get_waypoints(env,
         # angle from vertical axis to flat leg in initial stance
-        init_flat = .02*np.pi,
+        init_flat = 0.07215537,
         # angle for abs_y joint in initial stance
-        init_abs_y = np.pi/16,
+        init_abs_y = 0.19311089,
         # angle from swing leg to vertical axis in shift stance
-        shift_swing = .05*np.pi,
+        shift_swing = 0.1537753,
         # angle of torso towards support leg in shift stance
-        shift_torso = np.pi/5,
+        shift_torso = 0.62721647,
         # angle from vertical axis to flat leg in push stance
-        push_flat = -.00*np.pi,#-.05*np.pi,
+        push_flat = 0.00149024,#-.05*np.pi,
         # angle from swing leg to vertical axis in push stance
-        push_swing = -.10*np.pi,#-.01*np.pi,
+        push_swing = -0.31685723,#-.01*np.pi,
     )
     # (..., (angles, oojl, error), ...)
 
@@ -188,7 +209,7 @@ if __name__ == "__main__":
 
     trajectories = extend_mirrored_trajectory(env, trajectories)
     pypot_trajectories = tuple(map(env.get_pypot_trajectory, trajectories))
-    with open('pypot_traj1.pkl', "wb") as f: pk.dump(pypot_trajectories, f, protocol=2) 
+    with open(traj_fname, "wb") as f: pk.dump(pypot_trajectories, f, protocol=2) 
 
     env.close()
 
