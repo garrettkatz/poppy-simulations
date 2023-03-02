@@ -114,16 +114,63 @@ def extend_mirrored_trajectory(env, trajectories):
     return trajectories
 
 def phase_trajectory_figure(env, trajectories, fname=None):
+    # jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
+    # for n, trajectory in enumerate(trajectories):
+    #     pt.subplot(1, len(trajectories), n+1)
+    #     for t, (duration, angles) in enumerate(trajectory):
+    #         # if n == 0 and 0 < t < len(trajectory)-1: continue
+    #         jnt_loc = env.forward_kinematics(angles)
+    #         jnt_loc -= jnt_loc[env.joint_index['r_toe']]
+    #         render_legs(env, jnt_loc, jnt_idx, zoffset=2*t, alpha = (t+1) / len(trajectory))
+    #     pt.axis('equal')
+    #     pt.axis('off')
+    # if fname is not None: pt.savefig(fname)
+    # pt.show()
+
     jnt_idx = [env.joint_index[f"{lr}_{jnt}"] for lr in "lr" for jnt in ("toe", "heel", "ankle_y", "knee_y")]
+
+    fig = pt.figure(figsize=(6.5, 2.5), constrained_layout=True)
+    gs = fig.add_gridspec(3, len(trajectories))
+
+    (_, init) = trajectories[0][0]
+    jnt_loc = env.forward_kinematics(init)
+    r_toe, r_heel, l_toe, l_heel = (jnt_loc[env.joint_index[name]] for name in ('r_toe', 'r_heel', 'l_toe', 'l_heel'))
+    ylo, yhi = l_heel[1] - r_toe[1], l_toe[1] - r_toe[1]
+    xlo, xhi = 0, l_toe[0] - r_toe[0]
+    
     for n, trajectory in enumerate(trajectories):
-        pt.subplot(1, len(trajectories), n+1)
+        fig.add_subplot(gs[:2, n])
+        CoMs = np.empty((len(trajectory), 3))
         for t, (duration, angles) in enumerate(trajectory):
-            # if n == 0 and 0 < t < len(trajectory)-1: continue
+            CoMs[t] = env.center_of_mass(angles)
             jnt_loc = env.forward_kinematics(angles)
+            CoMs[t] -= jnt_loc[env.joint_index['r_toe']]
             jnt_loc -= jnt_loc[env.joint_index['r_toe']]
             render_legs(env, jnt_loc, jnt_idx, zoffset=2*t, alpha = (t+1) / len(trajectory))
-        pt.axis('equal')
+        # pt.axis('equal')
+        pt.xlim([-1.1*ylo, 1.1*yhi])
+        pt.ylim([-.01, .42])
+        pt.title((
+            "Initial $\\rightarrow$ Shift",
+            "Shift $\\rightarrow$ Push",
+            "Push $\\rightarrow$ Lift",
+            "Lift $\\rightarrow$ Kick",
+            "Kick $\\rightarrow$ Initial")[n])
         pt.axis('off')
+
+        fig.add_subplot(gs[2, n])
+        names = ('r_toe', 'r_heel', 'l_heel', 'l_toe', 'r_toe')
+        if n == 1: names = ('r_toe', 'r_heel', 'l_toe', 'r_toe')
+        if n == 2: names = ('r_toe', 'r_heel', 'r_toe')
+        if n == 3: names = ('r_toe', 'r_heel', 'l_heel', 'r_toe')
+        support_polygon = np.array([jnt_loc[env.joint_index[name]] for name in names])
+        pt.plot(support_polygon[:,0], support_polygon[:,1], 'k-')
+        for t in range(len(trajectory)):
+            pt.plot(CoMs[t,0], CoMs[t,1], 'o', color = (1 - (t+1) / len(trajectory),)*3)
+        pt.xlim([xlo - .05, xhi + .05])
+        pt.ylim([-1.1*yhi, 1.1*ylo])
+        pt.axis('off')
+    
     if fname is not None: pt.savefig(fname)
     pt.show()
 
@@ -144,59 +191,77 @@ def make_arccos_durations(trajectory):
 
 if __name__ == "__main__":
 
+    pt.rcParams["text.usetex"] = True
+    pt.rcParams['font.family'] = 'serif'
+
     show_traj = True
-    run_traj = True
+    run_traj = False
     num_cycles = 10
 
     env = PoppyErgoEnv(pb.POSITION_CONTROL, show=False)
 
-    # # original
-    # traj_fname = 'pypot_traj1.pkl'
-    # waypoints = get_waypoints(env,
-    #     # angle from vertical axis to flat leg in initial stance
-    #     init_flat = .02*np.pi,
-    #     # angle for abs_y joint in initial stance
-    #     init_abs_y = np.pi/16,
-    #     # angle from swing leg to vertical axis in shift stance
-    #     shift_swing = .05*np.pi,
-    #     # angle of torso towards support leg in shift stance
-    #     shift_torso = np.pi/5,
-    #     # angle from vertical axis to flat leg in push stance
-    #     push_flat = -.00*np.pi,#-.05*np.pi,
-    #     # angle from swing leg to vertical axis in push stance
-    #     push_swing = -.10*np.pi,#-.01*np.pi,
-    # )
-    # # (..., (angles, oojl, error), ...)
-
-    # numerical improved
-    traj_fname = 'pypot_traj_star.pkl'
+    # original
+    traj_fname = 'pypot_traj1.pkl'
     waypoints = get_waypoints(env,
         # angle from vertical axis to flat leg in initial stance
-        init_flat = 0.07215537,
+        init_flat = .02*np.pi,
         # angle for abs_y joint in initial stance
-        init_abs_y = 0.19311089,
+        init_abs_y = np.pi/16,
         # angle from swing leg to vertical axis in shift stance
-        shift_swing = 0.1537753,
+        shift_swing = .05*np.pi,
         # angle of torso towards support leg in shift stance
-        shift_torso = 0.62721647,
+        shift_torso = np.pi/5,
         # angle from vertical axis to flat leg in push stance
-        push_flat = 0.00149024,#-.05*np.pi,
+        push_flat = -.00*np.pi,#-.05*np.pi,
         # angle from swing leg to vertical axis in push stance
-        push_swing = -0.31685723,#-.01*np.pi,
+        push_swing = -.10*np.pi,#-.01*np.pi,
     )
     # (..., (angles, oojl, error), ...)
+
+    # # empirically derived alternative
+    # traj_fname = 'pypot_traj_star.pkl'
+    # waypoints = get_waypoints(env,
+    #     # angle from vertical axis to flat leg in initial stance
+    #     init_flat = 0.07215537,
+    #     # angle for abs_y joint in initial stance
+    #     init_abs_y = 0.19311089,
+    #     # angle from swing leg to vertical axis in shift stance
+    #     shift_swing = 0.1537753,
+    #     # angle of torso towards support leg in shift stance
+    #     shift_torso = 0.62721647,
+    #     # angle from vertical axis to flat leg in push stance
+    #     push_flat = 0.00149024,#-.05*np.pi,
+    #     # angle from swing leg to vertical axis in push stance
+    #     push_swing = -0.31685723,#-.01*np.pi,
+    # )
+    # # (..., (angles, oojl, error), ...)
 
     phase_waypoint_figure(env, waypoints)
 
     trajectories = get_direct_trajectories(env, waypoints)
 
     # trajectories = [linearly_interpolate(traj, num_points=5) for traj in trajectories]
+
+    if show_traj:
+        num_points = [5]*5
+        draw_trajectories = constrained_interpolate(env, trajectories, num_points)
+        phase_trajectory_figure(env, draw_trajectories, fname='transitions.pdf')
+
     num_points = [10, 10, 2, 2, 1]
     trajectories = constrained_interpolate(env, trajectories, num_points)
-    if show_traj:
-        phase_trajectory_figure(env, trajectories, fname='transitions.pdf')
-
     trajectories = [make_arccos_durations(traj) for traj in trajectories]
+
+    pt.figure(figsize=(4,2.5))
+    flat = [point for traj in trajectories for point in traj]
+    flatdurs, flatangs = zip(*flat)
+    timepoints = np.cumsum(flatdurs)
+    flatangs = np.stack(flatangs)
+    pt.plot(timepoints, flatangs, 'k-')
+    pt.xlabel('Time Elapsed (s)')
+    pt.ylabel('Joint Angles (rad)')
+    pt.tight_layout()
+    pt.savefig('traj.eps')
+    pt.show()
 
     # # show durations
     # offset = 0
