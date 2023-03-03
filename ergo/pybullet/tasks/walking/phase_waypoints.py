@@ -119,10 +119,19 @@ def get_waypoints(env,
     push_flat,
     # angle from swing (left) leg to vertical axis in push stance
     push_swing,
+    # just plan through shift phase
+    only_shift = False
 ):
 
     init_angles, init_oojl, init_error, toe_to_toe, heel_to_heel = get_init_waypoint(env, init_flat, init_abs_y)
     shift_angles, shift_oojl, shift_error = get_shift_waypoint(env, shift_swing, shift_torso, toe_to_toe, heel_to_heel)
+
+    if only_shift:
+        return (
+            (init_angles, init_oojl, init_error),
+            (shift_angles, shift_oojl, shift_error),
+        )
+
     push_angles, push_oojl, push_error = get_push_waypoint(env, push_flat, push_swing, shift_torso, toe_to_toe)
     kick_angles, kick_oojl, kick_error = get_kick_waypoint(env, push_angles, heel_to_heel)
 
@@ -150,6 +159,10 @@ def check_waypoints(env, waypoints):
         jnt_loc = env.forward_kinematics(angles)
         CoM = env.center_of_mass(angles)
         com_support = com_support and within_support(env, CoM, jnt_loc, support_names)
+
+    if len(waypoint_angles) == 2:
+        clearance = None
+        return in_limits, max_error, com_support, clearance
 
     # clearance during kick
     push_angles, kick_angles = waypoint_angles[2:4]

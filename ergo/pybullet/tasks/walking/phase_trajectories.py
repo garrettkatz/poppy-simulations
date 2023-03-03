@@ -251,12 +251,17 @@ if __name__ == "__main__":
     trajectories = constrained_interpolate(env, trajectories, num_points)
     trajectories = [make_arccos_durations(traj) for traj in trajectories]
 
-    pt.figure(figsize=(4,2.5))
-    flat = [point for traj in trajectories for point in traj]
-    flatdurs, flatangs = zip(*flat)
-    timepoints = np.cumsum(flatdurs)
-    flatangs = np.stack(flatangs)
-    pt.plot(timepoints, flatangs, 'k-')
+    pt.figure(figsize=(4,2))
+
+    flatangs = np.stack([ang for traj in trajectories for (_, ang) in traj])
+    offset = 0
+    for traj in trajectories:
+        durs, angs = zip(*traj)
+        timepoints = offset + np.cumsum(durs)
+        pt.plot(timepoints, np.stack(angs), 'k-')
+        offset = timepoints[-1]
+        pt.plot([offset]*2, [flatangs.min(), flatangs.max()], 'k:')
+
     pt.xlabel('Time Elapsed (s)')
     pt.ylabel('Joint Angles (rad)')
     pt.tight_layout()
