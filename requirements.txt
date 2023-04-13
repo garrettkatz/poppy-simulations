@@ -1,0 +1,22 @@
+cloudpickle==1.6.0
+cycler==0.11.0
+fonttools==4.28.3
+future==0.18.2
+-e git+https://github.com/openai/gym.git@8a721ace460cbaf8c3e6c03c12d06c616fd6e1e8#egg=gym
+kiwisolver==1.3.2
+matplotlib==3.5.0
+numpy==1.19.5
+packaging==21.3
+Pillow==7.2.0
+pybullet==3.0.6
+-e git+https://github.com/benelot/pybullet-gym.git@40b5b4e00793929f6d1d2adaf26ce97b4408fe06#egg=pybulletgym
+pygame==2.0.1
+pyglet==1.5.0
+pyparsing==3.0.6
+python-dateutil==2.8.2
+scipy==1.6.0
+setuptools-scm==6.3.2
+six==1.16.0
+tomli==1.2.2
+torch==1.12.0
+typing-extensions==4.3.0

@@ -75,9 +75,9 @@ def rewards(env , objpos):
     lh_pos = tr.mul(tr.tensor(list(map(add,lft_pos,lmt_pos))),0.5)
     rh_euc_distance = sum((rh_pos - tr.tensor(objpos[0]))**2)
 
-    lh_euc_distance = sum((lh_pos - tr.tensor(objpos[0]))**2)
+    lh_euc_distance = math.sqrt(sum((lh_pos - tr.tensor(objpos[0]))**2))
     closestarm = rh_euc_distance   #min(rh_euc_distance,lh_euc_distance)
-    rew = 1 - 10*closestarm
+    rew = 0 - closestarm
     # more rewards needed
     return rew
 
@@ -97,23 +97,34 @@ class Policy_network(tr.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.fc1 = tr.nn.Linear(48, 36)
+        self.fc1 = tr.nn.Linear(48, 9)
         self.fc2 = tr.nn.Linear(36, 9)
 
         self.relu = tr.nn.LeakyReLU()
         self.tanh = tr.nn.Tanh()
         self.sig = tr.nn.Sigmoid() #tanh
 
-    def forward(self, newstate):
-        residual = newstate[27:36]
-        outputp = self.fc1(newstate)
-        outputp = self.fc2(self.relu(outputp))
+    def forward(self, newstate,switch=1):
+        if switch ==1:
+            residual = newstate[27:36]
+            outputp = self.fc1(newstate)
+            #outputp = self.fc2(self.relu(outputp))
 
-        outputp = self.tanh(outputp)
-        outputp = tr.mul(outputp,tr.pi/6)
-        output = outputp.add(residual)
-        return output.flatten()
+            outputp = self.tanh(outputp)
+            outputp = tr.mul(outputp,tr.pi/6)
+            output = outputp.add(residual)
+            return output.flatten()   #if batches use reshape [batchsize,9]
+        else:
+            residual = newstate.index_select(1,tr.tensor([27,28,29,30,31,32,33,34,35]))
+            outputp = self.fc1(newstate)
+            # outputp = self.fc2(self.relu(outputp))
 
+            outputp = self.tanh(outputp)
+            outputp = tr.mul(outputp, tr.pi / 6)
+            output = outputp.add(residual)
+            #output_batch = newstate
+            #output_batch[:,27:36] = output
+            return output
     # remove residual
     # tune learning rate and other hyperparameters
     #
@@ -122,7 +133,7 @@ import random
 Network =Policy_network()
 import torch.optim as optim
 criterion= tr.nn.BCELoss()
-optimizer =optim.Adam(Network.parameters(),lr=0.01)
+optimizer =optim.Adam(Network.parameters(),lr=0.001)
 
 if __name__ == "__main__":
 
@@ -131,10 +142,13 @@ if __name__ == "__main__":
         LoopList = list()
         loss_list = list()
         X_axis_plot = list()
-        for epoch in range(10000):
+        show_ = False
+        env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=show_)
+
+        for epoch in range(10000): #episode
             X_axis_plot.append(epoch)
             # this adds the table
-            env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+
 
             tt.add_table()
             angles2 = env.angle_dict(env.get_position())
@@ -178,12 +192,52 @@ if __name__ == "__main__":
             angles = env.get_position()
             exit_counter = 0
             #while numattempts<100:
+            state_T = tr.zeros(50,48)
             running_loss =0.0
             prob_action = list()
             rew = list()
-            while True: #not fail
+            act_list = []
+            state_list=[]
+            batch_rew= []
+            with tr.no_grad():
+                for i in range(50):
+                    state_angles_check = env.get_position()
+
+                    # state_angles = env.angle_dict(env.get_position())
+                    state_position = pb.getBasePositionAndOrientation(disk)
+                    state_quat = pb.getMatrixFromQuaternion(pb.getBasePositionAndOrientation(disk)[1])
+                    newstate = make_state(state_angles_check, state_position, state_quat)
+                    probs = Network(newstate.float())
+                    m = dist.multivariate_normal.MultivariateNormal(probs, tr.mul(tr.eye(9), 0.001))
+                    action = m.sample()
+                    new_angles = env.get_position()
+                    new_angles[27:36] = action
+                    next_state = env.goto_position(list(new_angles), 1)
+                    state_list.append(newstate)
+                    state_T[i] = newstate.float().clone().detach()
+                    act_list.append(action)
+                    batch_rew.append(rewards(env, pb.getBasePositionAndOrientation(disk)))
+
+            batch_probs = Network(state_T,2)
+            batch_dist = []
+
+            for t in batch_probs:
+                distr = dist.multivariate_normal.MultivariateNormal(t,tr.mul(tr.eye(9),0.001))
+                distr = dist.normal.Normal(t,0.001)
+                batch_dist.append(distr)
+            batch_p_action_list = []
+            for act in act_list:
+                batch_p_action_list.append(-batch_dist.log_prob(act))
+            #rewardsbatch*prob
+
+            #loss = sum(batch_prob_action,axis=1) * sum(batch_rew)
+
+
+
+
+            while True: #not fail , action in episode  todo :implement batches
                 exit_counter = exit_counter+1
-                if exit_counter > 100:
+                if exit_counter > 1:
                     break
 
                 state_angles_check = env.get_position()
@@ -209,11 +263,13 @@ if __name__ == "__main__":
             loss.backward()
             loss_list.append(sum(rew))
             optimizer.step()
-            print(f'epoch [{epoch + 1},Training loss]: {loss:.3f}')
+            if epoch%100 == 99:
+                print(f'episode [{epoch + 1},Training loss]: {sum(rew):.3f}')
             pb.removeBody(disk)
             pb.removeBody(slot2)
             pb.removeBody(slot)
-            env.close()
+           # env.reset() fix
+        env.close()
 
         import matplotlib.pyplot as plt
 
