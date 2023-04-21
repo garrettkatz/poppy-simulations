@@ -143,6 +143,7 @@ class Obj:
         self.positions = []
         self.extents = extents
         self.isMutant = False
+        #self.objId = -99
         #or self.mutants = list of mutants
         self.ParentId = -1
 
@@ -257,9 +258,16 @@ class experiment:
         self.env = env
 
     def CreateScene(self):
+        t_pos = table_position()
+        t_ext = table_half_extents()
+        s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
+        s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
+            3) * np.array([0.5, 0, 0])
         return 0
-
-
+    def SpawnObject(self,obj):
+        Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
+        ObjInfo = add_box_compound(Boxes)
+        return ObjInfo
 
 
 Dataset = Data_Dict()
