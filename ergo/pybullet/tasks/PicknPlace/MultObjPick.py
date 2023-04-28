@@ -143,9 +143,11 @@ class Obj:
         self.positions = []
         self.extents = extents
         self.isMutant = False
+        self.basePosition = [0,0,0]
         #self.objId = -99
         #or self.mutants = list of mutants
         self.ParentId = -1
+        self.voxels = np.zeros((No_parts+2,)*3)
 
         self.PositionsAvailable = [] #positions available for mutation
         self.NoOfParts = No_parts
@@ -177,7 +179,11 @@ class Obj:
         self.extents = extents
         self.maxz = maxz
         return self
+    def Generate_Voxels(self):
 
+        for pos in self.positions:
+            self.voxels[pos] = 1
+        return self
 
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
@@ -254,8 +260,11 @@ test = np.random.randn()
 
 
 class experiment:
-    def __init__(self,env):
-        self.env = env
+    def __init__(self):
+        self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+        sys.path.append(os.path.join('..', '..', 'envs'))
+        sys.path.append(os.path.join('..', '..', 'objects'))
+        add_table()
 
     def CreateScene(self):
         t_pos = table_position()
@@ -263,11 +272,23 @@ class experiment:
         s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
         s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
             3) * np.array([0.5, 0, 0])
+        angles = self.env.angle_dict(env.get_position())
+        angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
+        self.env.set_position(env.angle_array(angles))
         return 0
     def SpawnObject(self,obj):
         Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
         ObjInfo = add_box_compound(Boxes)
         return ObjInfo
+
+    def MoveToPos(self,pos,opening_width,arm="right"):
+        target_pos = copy.deepcopy(pos)
+        target_pos[2] = target_pos[2]
+        tarargs = get_tip_targets(target_pos, quat, opening_width)
+        i_k = mc.balanced_reach_ik(env, tarargs, arm)
+        self.env.goto_position(i_k, 1)
+        print("Moving-1")
+        return 1
 
 
 Dataset = Data_Dict()
