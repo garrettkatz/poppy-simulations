@@ -227,6 +227,42 @@ class Obj:
         self.PositionsAvailable = voxel_positions.copy()
         return self
 
+class experiment:
+    def __init__(self):
+        sys.path.append(os.path.join('..', '..', 'envs'))
+        from ergo import PoppyErgoEnv
+        import motor_control2 as mc
+        sys.path.append(os.path.join('..', '..', 'objects'))
+        from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
+        self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+        sys.path.append(os.path.join('..', '..', 'envs'))
+        sys.path.append(os.path.join('..', '..', 'objects'))
+        add_table()
+
+    def CreateScene(self):
+        t_pos = table_position()
+        t_ext = table_half_extents()
+        s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
+        s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
+            3) * np.array([0.5, 0, 0])
+        angles = self.env.angle_dict(env.get_position())
+        angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
+        self.env.set_position(env.angle_array(angles))
+        return 0
+    def SpawnObject(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
+        Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
+        ObjInfo = add_box_compound(Boxes)
+        pb.resetBasePositionAndOrientation(ObjInfo, obj.basePosition, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
+        return ObjInfo
+
+    def MoveToPos(self,pos,opening_width,arm="right"):
+        target_pos = copy.deepcopy(pos)
+        target_pos[2] = target_pos[2]
+        tarargs = get_tip_targets(target_pos, quat, opening_width)
+        i_k = mc.balanced_reach_ik(env, tarargs, arm)
+        self.env.goto_position(i_k, 1)
+        print("Moving-1")
+        return 1
 
 
 dims = np.array([.01, .01, .01])
@@ -234,7 +270,17 @@ n_parts = 6
 rgb = [(.75, .25, .25)] * n_parts
 obj = Obj(dims,n_parts,rgb)
 obj = obj.GenerateObject(dims,n_parts,[0,0,0])
-obj = obj.SpawnObject(dims,n_parts,[0,0,0])
+sys.path.append(os.path.join('..', '..', 'envs'))
+from ergo import PoppyErgoEnv
+import motor_control2 as mc
+
+sys.path.append(os.path.join('..', '..', 'objects'))
+from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
+#env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+exp_obj = Obj(dims,n_parts,rgb)
+exp_obj = exp_obj.GenerateObject(dims,n_parts,[0,0,0])
+xprmt = experiment()
+xprmt = xprmt.SpawnObject(exp_obj)
 
 
 if __name__ == "__main__":
@@ -259,36 +305,6 @@ files = glob.glob(fpath,recursive=True)
 test = np.random.randn()
 
 
-class experiment:
-    def __init__(self):
-        self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
-        sys.path.append(os.path.join('..', '..', 'envs'))
-        sys.path.append(os.path.join('..', '..', 'objects'))
-        add_table()
-
-    def CreateScene(self):
-        t_pos = table_position()
-        t_ext = table_half_extents()
-        s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
-        s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
-            3) * np.array([0.5, 0, 0])
-        angles = self.env.angle_dict(env.get_position())
-        angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
-        self.env.set_position(env.angle_array(angles))
-        return 0
-    def SpawnObject(self,obj):
-        Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
-        ObjInfo = add_box_compound(Boxes)
-        return ObjInfo
-
-    def MoveToPos(self,pos,opening_width,arm="right"):
-        target_pos = copy.deepcopy(pos)
-        target_pos[2] = target_pos[2]
-        tarargs = get_tip_targets(target_pos, quat, opening_width)
-        i_k = mc.balanced_reach_ik(env, tarargs, arm)
-        self.env.goto_position(i_k, 1)
-        print("Moving-1")
-        return 1
 
 
 Dataset = Data_Dict()
