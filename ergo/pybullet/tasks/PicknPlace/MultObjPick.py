@@ -10,6 +10,12 @@ from xml.etree.ElementTree import Element,tostring
 #import dicttoxml
 import xmltodict
 
+sys.path.append(os.path.join('..', '..', 'envs'))
+from ergo import PoppyErgoEnv
+import motor_control2 as mc
+
+sys.path.append(os.path.join('..', '..', 'objects'))
+from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
 def dict_to_xml(tag, d):
 
     elem = Element(tag)
@@ -229,11 +235,7 @@ class Obj:
 
 class experiment:
     def __init__(self):
-        sys.path.append(os.path.join('..', '..', 'envs'))
-        from ergo import PoppyErgoEnv
-        import motor_control2 as mc
-        sys.path.append(os.path.join('..', '..', 'objects'))
-        from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
+
         self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
         sys.path.append(os.path.join('..', '..', 'envs'))
         sys.path.append(os.path.join('..', '..', 'objects'))
@@ -242,12 +244,12 @@ class experiment:
     def CreateScene(self):
         t_pos = table_position()
         t_ext = table_half_extents()
-        s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
-        s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
-            3) * np.array([0.5, 0, 0])
-        angles = self.env.angle_dict(env.get_position())
+        #s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - self.maxz)
+        #s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - self.maxz) + np.random.randn(
+         #   3) * np.array([0.5, 0, 0])
+        angles = self.env.angle_dict(self.env.get_position())
         angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
-        self.env.set_position(env.angle_array(angles))
+        self.env.set_position(self.env.angle_array(angles))
         return 0
     def SpawnObject(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
         Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
@@ -274,125 +276,125 @@ sys.path.append(os.path.join('..', '..', 'envs'))
 from ergo import PoppyErgoEnv
 import motor_control2 as mc
 
-sys.path.append(os.path.join('..', '..', 'objects'))
-from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
-#env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
-exp_obj = Obj(dims,n_parts,rgb)
-exp_obj = exp_obj.GenerateObject(dims,n_parts,[0,0,0])
-xprmt = experiment()
-xprmt = xprmt.SpawnObject(exp_obj)
+# sys.path.append(os.path.join('..', '..', 'objects'))
+# from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
+# #env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+# exp_obj = Obj(dims,n_parts,rgb)
+# exp_obj = exp_obj.GenerateObject(dims,n_parts,[0,0,0])
+# xprmt = experiment()
+# xprmt = xprmt.SpawnObject(exp_obj)
+#
+#
+# if __name__ == "__main__":
+#     sys.path.append(os.path.join('..', '..', 'envs'))
+#     from ergo import PoppyErgoEnv
+#     import motor_control2 as mc
+#     sys.path.append(os.path.join('..', '..', 'objects'))
+#     from tabletop import add_table, add_cube,add_obj,add_box_compound,table_position,table_half_extents
+#
+#     # this launches the simulator
+#     # fix the base to avoid balance issues : Removed in Update
+#     env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+#     # this adds the table
+#     add_table()
+#
+#     # add a few cubes at random positions on the table
+# Error = []
+# Error_count=[]
+# urdfList = []
+# fpath = "D:/G/Poppy_data/**/*.urdf"
+# files = glob.glob(fpath,recursive=True)
+# test = np.random.randn()
 
 
-if __name__ == "__main__":
-    sys.path.append(os.path.join('..', '..', 'envs'))
-    from ergo import PoppyErgoEnv
-    import motor_control2 as mc
-    sys.path.append(os.path.join('..', '..', 'objects'))
-    from tabletop import add_table, add_cube,add_obj,add_box_compound,table_position,table_half_extents
-
-    # this launches the simulator
-    # fix the base to avoid balance issues : Removed in Update
-    env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
-    # this adds the table
-    add_table()
-
-    # add a few cubes at random positions on the table
-Error = []
-Error_count=[]
-urdfList = []
-fpath = "D:/G/Poppy_data/**/*.urdf"
-files = glob.glob(fpath,recursive=True)
-test = np.random.randn()
-
-
-
-
-Dataset = Data_Dict()
-
-for loop_counter in range(100):
-    n_parts = 6
-    pos, ext, maxz = Generative_Shapes(dim, n_parts, [0, 0, 0])
-    voxel_extents,voxel_pos = ObjectOpenPositions(pos,ext)
-    dims = np.array([.01, .01, .01])
-    mut_pos,mut_ext = mutate(ext,pos,voxel_pos,voxel_extents)
-    # pos, ext = slot_arrays_mod(dims/2, dims/2 + np.array([.01, .01, 0]))
-    rgb = [(.75, .25, .25)] * n_parts
-    boxes = list(zip(map(tuple, pos), ext, rgb))
-    boxes2 = list(zip(map(tuple, mut_pos), mut_ext, rgb))
-    obj = add_box_compound(boxes)
-    obj_mutant = add_box_compound(boxes2)
-    t_pos = table_position()
-    t_ext = table_half_extents()
-    s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
-    s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
-        3) * np.array([0.5, 0, 0])
-    pb.resetBasePositionAndOrientation(obj, s_pos, (0.0, 0.0, 0.0, 1))
-    pb.resetBasePositionAndOrientation(obj_mutant, s_pos2, (0.0, 0.0, 0.0, 1))
-
-    if loop_counter==0:
-        angles = env.angle_dict(env.get_position())
-    angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
-    env.set_position(env.angle_array(angles))
-
-    #Dataset.AddObjtoDict(loop_counter,pos,ext,n_parts)
-    #test = xmltodict.unparse(Dataset.Dict_positions,expand_iter="coord")
-    #test_dict = xmltodict.parse(test)
-
-    #print(tostring(test))
-
-    pos = pb.getBasePositionAndOrientation(obj)
-    quat = pb.getMatrixFromQuaternion(pb.getBasePositionAndOrientation(obj)[1])
-    for i in range(n_parts):
-        LinkInfo = pb.getLinkState(obj,i)
-        Link_pos = list(LinkInfo[0])
-        link_orn = list(LinkInfo[1])
-        quat = pb.getMatrixFromQuaternion(pb.getLinkState(obj,i)[1])
-
-
-
-        #Move above target
-        target_pos = copy.deepcopy(Link_pos)
-        target_pos[2] = target_pos[2] +0.1
-        tarargs = get_tip_targets(target_pos,quat,0.014)
-        i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
-        env.goto_position(i_k, 1)
-        print("Moving-1")
-
-        #move to target
-
-        target_pos = copy.deepcopy(Link_pos)
-        tarargs = get_tip_targets(target_pos, quat, 0.014)
-        i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
-        env.goto_position(i_k, 1)
-        print("Moving-2")
-
-        #Close gripper
-        tarargs = get_tip_targets(target_pos, quat, 0.002)
-        i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
-        env.goto_position(i_k, 1)
-        print("Moving -3")
-
-
-        # Lift
-
-        #Check
-        #if(pb.getBasePositionAndOrientation(obj)[0][2]> 0.1):
-           # print("Object lift Successful")
-
-       # else:
-          #  print("Object lift Unsuccessful")
-    #
-    #
-    pb.removeBody(obj)
-Postoxmlconvert = dict_to_xml('Position',Dataset.Dict_positions)
-Exttoxmlconvert = dict_to_xml('Extent',Dataset.Dict_extents)
-Restoxmlconvert = dict_to_xml('Result',Dataset.Dict_extents)
-
-
-
-import matplotlib.pyplot as plt
-
-plt.scatter(Error_count,Error)
-plt.show()
-
-input("..")
+#
+#
+# Dataset = Data_Dict()
+#
+# for loop_counter in range(100):
+#     n_parts = 6
+#     pos, ext, maxz = Generative_Shapes(dim, n_parts, [0, 0, 0])
+#     voxel_extents,voxel_pos = ObjectOpenPositions(pos,ext)
+#     dims = np.array([.01, .01, .01])
+#     mut_pos,mut_ext = mutate(ext,pos,voxel_pos,voxel_extents)
+#     # pos, ext = slot_arrays_mod(dims/2, dims/2 + np.array([.01, .01, 0]))
+#     rgb = [(.75, .25, .25)] * n_parts
+#     boxes = list(zip(map(tuple, pos), ext, rgb))
+#     boxes2 = list(zip(map(tuple, mut_pos), mut_ext, rgb))
+#     obj = add_box_compound(boxes)
+#     obj_mutant = add_box_compound(boxes2)
+#     t_pos = table_position()
+#     t_ext = table_half_extents()
+#     s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz)
+#     s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - maxz) + np.random.randn(
+#         3) * np.array([0.5, 0, 0])
+#     pb.resetBasePositionAndOrientation(obj, s_pos, (0.0, 0.0, 0.0, 1))
+#     pb.resetBasePositionAndOrientation(obj_mutant, s_pos2, (0.0, 0.0, 0.0, 1))
+#
+#     if loop_counter==0:
+#         angles = env.angle_dict(env.get_position())
+#     angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
+#     env.set_position(env.angle_array(angles))
+#
+#     #Dataset.AddObjtoDict(loop_counter,pos,ext,n_parts)
+#     #test = xmltodict.unparse(Dataset.Dict_positions,expand_iter="coord")
+#     #test_dict = xmltodict.parse(test)
+#
+#     #print(tostring(test))
+#
+#     pos = pb.getBasePositionAndOrientation(obj)
+#     quat = pb.getMatrixFromQuaternion(pb.getBasePositionAndOrientation(obj)[1])
+#     for i in range(n_parts):
+#         LinkInfo = pb.getLinkState(obj,i)
+#         Link_pos = list(LinkInfo[0])
+#         link_orn = list(LinkInfo[1])
+#         quat = pb.getMatrixFromQuaternion(pb.getLinkState(obj,i)[1])
+#
+#
+#
+#         #Move above target
+#         target_pos = copy.deepcopy(Link_pos)
+#         target_pos[2] = target_pos[2] +0.1
+#         tarargs = get_tip_targets(target_pos,quat,0.014)
+#         i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
+#         env.goto_position(i_k, 1)
+#         print("Moving-1")
+#
+#         #move to target
+#
+#         target_pos = copy.deepcopy(Link_pos)
+#         tarargs = get_tip_targets(target_pos, quat, 0.014)
+#         i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
+#         env.goto_position(i_k, 1)
+#         print("Moving-2")
+#
+#         #Close gripper
+#         tarargs = get_tip_targets(target_pos, quat, 0.002)
+#         i_k = mc.balanced_reach_ik(env, tarargs, arm="right")
+#         env.goto_position(i_k, 1)
+#         print("Moving -3")
+#
+#
+#         # Lift
+#
+#         #Check
+#         #if(pb.getBasePositionAndOrientation(obj)[0][2]> 0.1):
+#            # print("Object lift Successful")
+#
+#        # else:
+#           #  print("Object lift Unsuccessful")
+#     #
+#     #
+#     pb.removeBody(obj)
+# Postoxmlconvert = dict_to_xml('Position',Dataset.Dict_positions)
+# Exttoxmlconvert = dict_to_xml('Extent',Dataset.Dict_extents)
+# Restoxmlconvert = dict_to_xml('Result',Dataset.Dict_extents)
+#
+#
+#
+# import matplotlib.pyplot as plt
+#
+# plt.scatter(Error_count,Error)
+# plt.show()
+#
+# input("..")
