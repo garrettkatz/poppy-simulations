@@ -148,6 +148,7 @@ class Obj:
     def __init__(self,extents,No_parts,rbg):
         self.positions = []
         self.extents = extents
+        self.dim = extents
         self.isMutant = False
         self.basePosition = [0,0,0]
         #self.objId = -99
@@ -206,7 +207,7 @@ class Obj:
         return newobj
 
 
-    def SpawnObject(self,env,dim,noofparts,basepos):
+    def _SpawnObject(self,env,dim,noofparts,basepos):
         self.GenerateObject(dim,noofparts,basepos)
         Boxes = list(zip(map(tuple, self.positions), self.extents, self.rgb))
         ObjInfo = add_box_compound(Boxes)
@@ -240,10 +241,11 @@ class experiment:
         sys.path.append(os.path.join('..', '..', 'envs'))
         sys.path.append(os.path.join('..', '..', 'objects'))
         add_table()
+        self.t_pos = table_position()
+        self.t_ext = table_half_extents()
 
     def CreateScene(self):
-        t_pos = table_position()
-        t_ext = table_half_extents()
+
         #s_pos = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - self.maxz)
         #s_pos2 = (t_pos[0], t_pos[1] + t_ext[1] / 2, t_pos[2] + t_ext[2] + dims[2] / 2 - self.maxz) + np.random.randn(
          #   3) * np.array([0.5, 0, 0])
@@ -251,17 +253,23 @@ class experiment:
         angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
         self.env.set_position(self.env.angle_array(angles))
         return 0
-    def SpawnObject(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
+    def Spawn_Object(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
         Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
         ObjInfo = add_box_compound(Boxes)
-        pb.resetBasePositionAndOrientation(ObjInfo, obj.basePosition, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
+        a=self.t_pos[0]
+        b=self.t_pos[1] + self.t_ext[1] / 2
+        c=self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz
+        b_position = (self.t_pos[0], self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz)
+        pb.resetBasePositionAndOrientation(ObjInfo, b_position, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
+        obj.basePosition = b_position
         return ObjInfo
 
     def MoveToPos(self,pos,opening_width,arm="right"):
         target_pos = copy.deepcopy(pos)
-        target_pos[2] = target_pos[2]
+        #target_pos[2] = target_pos[2]
+        quat = pb.getMatrixFromQuaternion([0,0,0,1])
         tarargs = get_tip_targets(target_pos, quat, opening_width)
-        i_k = mc.balanced_reach_ik(env, tarargs, arm)
+        i_k = mc.balanced_reach_ik(self.env, tarargs, arm)
         self.env.goto_position(i_k, 1)
         print("Moving-1")
         return 1
@@ -273,8 +281,7 @@ rgb = [(.75, .25, .25)] * n_parts
 obj = Obj(dims,n_parts,rgb)
 obj = obj.GenerateObject(dims,n_parts,[0,0,0])
 sys.path.append(os.path.join('..', '..', 'envs'))
-from ergo import PoppyErgoEnv
-import motor_control2 as mc
+
 
 # sys.path.append(os.path.join('..', '..', 'objects'))
 # from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
