@@ -1,5 +1,5 @@
 import MultObjPick
-import BaselineLearner
+from BaselineLearner import BaselineLearner
 
 import numpy as np
 
@@ -18,3 +18,4 @@ Experiment_obj.GenerateObject(dims,n_parts,[0,0,0])
 Experiment_env.Spawn_Object(Experiment_obj)
 Experiment_env.MoveToPos(Experiment_obj.basePosition,0.005)
 print("")
+input('.')
