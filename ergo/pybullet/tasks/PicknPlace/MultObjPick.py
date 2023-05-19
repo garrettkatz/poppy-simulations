@@ -273,7 +273,11 @@ class experiment:
         self.env.goto_position(i_k, 1)
         print("Moving-1")
         return 1
+    def MoveThroughPoints(self,Targets):
 
+        for tar in Targets:
+            print(tar)
+        return 1
 
 dims = np.array([.01, .01, .01])
 n_parts = 6
