@@ -738,13 +738,15 @@
             </inertial>
         </link>
         <link name="r_fixed_tip">
-          <contact>
-            <lateral_friction value="1.0"/>
-            <rolling_friction value="1.0"/>
-            <inertia_scaling value="3.0"/>
-            <contact_cfm value="0.0"/>
-            <contact_erp value="1.0"/>
-          </contact>
+          <!-- mass/inertia of 1.0 instead of 0.01 important for successful grasps -->
+          <!-- contact not needed if mass/inertia parameters are 1.0 -->
+          <!-- <contact> -->
+          <!--   <lateral_friction value="1.0"/> -->
+          <!--   <rolling_friction value="1.0"/> -->
+          <!--   <inertia_scaling value="3.0"/> -->
+          <!--   <contact_cfm value="0.0"/> -->
+          <!--   <contact_erp value="1.0"/> -->
+          <!-- </contact> -->
           <!-- comment visual placeholder to see collision shape -->
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -757,8 +759,8 @@
             </geometry>
           </collision>
           <inertial>
-            <mass value=".01"/>
-            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+            <mass value="1."/>
+            <inertia ixx="1." ixy="0.0" ixz="0.0" iyy="1." iyz="0.0" izz="1."/>
           </inertial>
         </link>
         <link name="r_fixed_knuckle">
@@ -779,13 +781,15 @@
           </inertial>
         </link>
         <link name="r_moving_tip">
-          <contact>
-            <lateral_friction value="1.0"/>
-            <rolling_friction value="1.0"/>
-            <inertia_scaling value="3.0"/>
-            <contact_cfm value="0.0"/>
-            <contact_erp value="1.0"/>
-          </contact>
+          <!-- mass/inertia of 1.0 instead of 0.01 important for successful grasps -->
+          <!-- contact not needed if mass/inertia parameters are 1.0 -->
+          <!-- <contact> -->
+          <!--   <lateral_friction value="1.0"/> -->
+          <!--   <rolling_friction value="1.0"/> -->
+          <!--   <inertia_scaling value="3.0"/> -->
+          <!--   <contact_cfm value="0.0"/> -->
+          <!--   <contact_erp value="1.0"/> -->
+          <!-- </contact> -->
           <!-- comment visual placeholder to see collision shape -->
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -798,8 +802,8 @@
             </geometry>
           </collision>
           <inertial>
-            <mass value=".01"/>
-            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+            <mass value="1."/>
+            <inertia ixx="1." ixy="0.0" ixz="0.0" iyy="1." iyz="0.0" izz="1."/>
           </inertial>
         </link>  
 
@@ -892,14 +896,16 @@
             </inertial>
         </link>
         <link name="l_fixed_tip">
+          <!-- mass/inertia of 1.0 instead of 0.01 important for successful grasps -->
+          <!-- contact not needed if mass/inertia parameters are 1.0 -->
+          <!-- <contact> -->
+          <!--   <lateral_friction value="1.0"/> -->
+          <!--   <rolling_friction value="1.0"/> -->
+          <!--   <inertia_scaling value="3.0"/> -->
+          <!--   <contact_cfm value="0.0"/> -->
+          <!--   <contact_erp value="1.0"/> -->
+          <!-- </contact> -->
           <!-- comment visual placeholder to see collision shape -->
-          <contact>
-            <lateral_friction value="1.0"/>
-            <rolling_friction value="1.0"/>
-            <inertia_scaling value="3.0"/>
-            <contact_cfm value="0.0"/>
-            <contact_erp value="1.0"/>
-          </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
@@ -911,8 +917,8 @@
             </geometry>
           </collision>
           <inertial>
-            <mass value=".01"/>
-            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+            <mass value="1."/>
+            <inertia ixx="1." ixy="0.0" ixz="0.0" iyy="1." iyz="0.0" izz="1."/>
           </inertial>
         </link>
         <link name="l_fixed_knuckle">
@@ -933,14 +939,16 @@
           </inertial>
         </link>
         <link name="l_moving_tip">
+          <!-- mass/inertia of 1.0 instead of 0.01 important for successful grasps -->
+          <!-- contact not needed if mass/inertia parameters are 1.0 -->
+            <!-- <contact> -->
+            <!--   <lateral_friction value="1.0"/> -->
+            <!--   <rolling_friction value="1.0"/> -->
+            <!--   <inertia_scaling value="3.0"/> -->
+            <!--   <contact_cfm value="0.0"/> -->
+            <!--   <contact_erp value="1.0"/> -->
+            <!-- </contact> -->
           <!-- comment visual placeholder to see collision shape -->
-            <contact>
-              <lateral_friction value="1.0"/>
-              <rolling_friction value="1.0"/>
-              <inertia_scaling value="3.0"/>
-              <contact_cfm value="0.0"/>
-              <contact_erp value="1.0"/>
-            </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
@@ -952,8 +960,8 @@
             </geometry>
           </collision>
           <inertial>
-            <mass value=".01"/>
-            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+            <mass value="1."/>
+            <inertia ixx="1." ixy="0.0" ixz="0.0" iyy="1." iyz="0.0" izz="1."/>
           </inertial>
         </link>  
 
