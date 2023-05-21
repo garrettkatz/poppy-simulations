@@ -1,15 +1,19 @@
+import sys, os
 import itertools as it
 import numpy as np
 import matplotlib.pyplot as pt
 
+sys.path.append(os.path.join('..', '..', 'objects'))
+from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
+
 class BaselineLearner:
 
     """
-    half_grasp: half the grasp distance (in units of voxels) between parallel grippers
+    grasp_width: max distance between grippers when grasping, in voxel units
     voxel_size: the width of each voxel, in simulator units
     """
-    def __init__(self, half_grasp = 1, voxel_size = 0.01):
-        self.half_grasp = half_grasp
+    def __init__(self, grasp_width, voxel_size):
+        self.grasp_width = grasp_width
         self.voxel_size = voxel_size
 
     """
@@ -22,68 +26,115 @@ class BaselineLearner:
         grasp_candidates[n]: nth viable pair of contact points in the voxel grid
     """
     def collect_grasp_candidates(self, env, voxels, origin):
-        # pattern is [0, 1, 1, 1, 0], 0 is where the fingertips go
-        hg = self.half_grasp
-        grasp_pattern = np.ones(2*hg + 3)
-        grasp_pattern[[0, -1]] = 0
-
         grasp_candidates = []
-        for (i,j,k) in zip(*np.nonzero(voxels)):
-            print(voxels[i-hg-1:i+hg+2, j, k])
-            if (voxels[i-hg-1:i+hg+2, j, k] == grasp_pattern).all():
-                grasp_candidates.append( ((i-hg-1, j, k), (i+hg+1, j, k)) )
-            print(voxels[i, j-hg-1:j+hg+2, k])
-            if (voxels[i, j-hg-1:j+hg+2, k] == grasp_pattern).all():
-                grasp_candidates.append( ((i, j-hg-1, k), (i, j+hg+1, k)) )
-            print(voxels[i, j, k-hg-1:k+hg+2])
-            if (voxels[i, j, k-hg-1:k+hg+2] == grasp_pattern).all():
-                grasp_candidates.append( ((i, j, k-hg-1), (i, j, k+hg+1)) )
+
+        # try all grasp widths up to max
+        for gw in range(1, self.grasp_width+1):
+
+            # pattern is like [0, 1, 0], 0 is where the fingertips go
+            grasp_pattern = np.ones(gw + 2)
+            grasp_pattern[[0, -1]] = 0
+    
+            for (i,j,k) in zip(*np.nonzero(voxels)):
+                # top-down grips only
+                if (voxels[i-1:i+gw+1, j, k] == grasp_pattern).all():
+                    grasp_candidates.append( ((i, j+.5, k+.5), (i+gw, j+.5, k+.5)) )
+                if (voxels[i, j-1:j+gw+1, k] == grasp_pattern).all():
+                    grasp_candidates.append( ((i+.5, j, k+.5), (i+.5, j+gw, k+.5)) )
 
         return grasp_candidates
 
     """
     Input as above
     Output:
-        grasp_candidates as above
-        joints[n]: sequence of joint angle waypoints for nth grasp candidate
+        joints[n]: nth sequence of joint angle waypoints, ordered best to worst
     """
     def predict_waypoints(self, env, voxels, origin):
 
-        zeros = np.zeros(env.num_joints)
+        # rest = np.zeros(env.num_joints)
+        rest = env.get_position()
 
-        # relevant joint indices
-        fingers = [env.joint_index[f"r_{fm}_tip"] for fm in ("fixed", "moving")]
-        neck_index = env.joint_index["head_z"]
-        waist_index = 0
+        # links with specified IK targets
+        links = [
+            env.joint_index[f"r_moving_tip"],
+            env.joint_index[f"r_fixed_tip"],
+            env.joint_index[f"r_fixed_knuckle"], # for top-down approach
+        ]
 
         # joints that are free for IK
         free = list(range(env.num_joints))
-        free.remove(neck_index)
-        free.remove(waist_index)
+        # links with targets not free
+        for idx in links: free.remove(idx)
+        # keep overall standing posture
+        free.remove(env.joint_index["head_z"]) # neck
+        free.remove(env.joint_index["l_shoulder_y"]) # face forward
+        free.remove(env.joint_index["l_fixed_tip"]) # don't flail arm
+        free.remove(0) # waist
 
         # get all grasp candidates
+        # [n,f,xyz] is nth candidate, fth finger, xyz coordinate
         grasp_candidates = self.collect_grasp_candidates(env, voxels, origin)
 
-        # track successful ones
-        viable_grasps, viable_angles = [], []
+        # # just try one
+        # grasp_candidates = grasp_candidates[:1]
+
+        # convert to simulator coordinates
+        coords = np.array(grasp_candidates)
+        coords = (coords - 1) * self.voxel_size # subtract lower padding and convert units
+        coords += origin # transform to object position
+
+        # get waypoint targets
+        grip_centers = coords.mean(axis=1, keepdims=True)
+        open_down = grip_centers + 1.5 * (coords - grip_centers)
+        closed_down = grip_centers + 0.9 * (coords - grip_centers)
+        closed_up = closed_down + np.array([[[0, 0, 2*self.voxel_size]]])
+        open_up = open_down + np.array([[[0, 0, 2*self.voxel_size]]])
+        waypoints = (open_up, open_down, closed_down, closed_up)
+
+        # track successful trajectories and their errors
+        trajectories = []
+        max_errors = []
+
+        # error tolerance for IK solution
+        errtol = self.voxel_size * 0.1
 
         # try every grasp
-        for n, pair in enumerate(grasp_candidates):
+        for n in range(len(grasp_candidates)):
+            print(f"trying {n} of {len(grasp_candidates)}, {len(trajectories)} trajectories so far")
             # try each finger at each contact point
-            for both in (pair, pair[::-1]):
+            for fixed, moving in ([0, 1], [1, 0]):
 
-                # convert to cartesian coordinates
-                targets = [self.voxel_size * np.array(p) + origin for p in both]
+                # IK on each waypoint
+                env.set_position(rest)
+                angles = {-1: rest}
+                max_error = 0
+                for w in range(len(waypoints)):
+
+                    targets = waypoints[w][n][[moving, fixed, fixed], :]
+                    targets[2,2] += .05 # xyz origin offset of fixed_knuckle in urdf
                 
-                # try to reach
-                angles, out_of_range, error = env.partial_ik(fingers, targets, zeros, free)
-                if out_of_range: continue
-                if error > self.voxel_size / 10: continue
+                    # try to reach
+                    angles[w], out_of_range, error = env.partial_ik(links, targets, angles[w-1], free, num_iters=3000)
+                    # if out_of_range: break
+                    max_error = max(max_error, error)
 
-                viable_grasps.append(both)
-                viable_angles.append(angles)
+                angles = [angles[w] for w in range(len(waypoints))]
 
-        return viable_grasps, viable_angles
+                # env.set_position(angles[1])
+                # print(out_of_range)
+                # print(max_error, errtol)
+                # input('..')
+
+                # save trajectories
+                trajectories.append(angles)
+                max_errors.append(max_error)
+
+        # order best (least error) to worst
+        sorter = np.argsort(max_errors)
+        trajectories = [trajectories[s] for s in sorter]
+        max_errors = [max_errors[s] for s in sorter]
+
+        return trajectories
 
     """
     Input:
@@ -127,49 +178,68 @@ if __name__ == "__main__":
     import MultObjPick
     import pybullet as pb
 
-    half_grasp = 0 # grasp points at +/- (half_grasp+1)
-    voxel_size = 0.01 # dimension of each voxel
+    grasp_width = 1 # distance between grippers in voxel units
+    voxel_size = 0.03 # dimension of each voxel
 
-    learner = BaselineLearner(half_grasp, voxel_size)
+    learner = BaselineLearner(grasp_width, voxel_size)
     
-    Experiment_env = MultObjPick.experiment()
-    Experiment_env.CreateScene()
+    exp = MultObjPick.experiment()
+    exp.CreateScene()
+    env = exp.env
     
-    dims = voxel_size * np.ones(3)
+    dims = voxel_size * np.ones(3) / 2 # dims are actually half extents
     n_parts = 6
     rgb = [(.75, .25, .25)] * n_parts
-    Experiment_obj = MultObjPick.Obj(dims,n_parts,rgb)
-    Experiment_obj.GenerateObject(dims,n_parts,[0,0,0])
-    Experiment_env.Spawn_Object(Experiment_obj)
+    obj = MultObjPick.Obj(dims,n_parts,rgb)
+    obj.GenerateObject(dims,n_parts,[0,0,0])
+    obj_id = exp.Spawn_Object(obj)
 
-    # replace this block with Actual_Voxels?
-    vpos = np.array(Experiment_obj.positions)
-    vijk = (vpos / (2*voxel_size)).round().astype(int)
-    vijk -= vijk.min()
-    vijk += half_grasp + 1 # padding
-    grid_size = vijk.max() + half_grasp +2 # padding
-    voxels = np.zeros((grid_size,)*3)
+    # reposition objected flush on table
+    base_pos = np.array(obj.basePosition)
+    voxel_pos = np.array(obj.positions)
+    voxel_centers = voxel_pos + base_pos
+    table_height = table_position()[2] + table_half_extents()[2]
+    z_offset = (voxel_centers[:,2].min() - voxel_size/2) - table_height - 0.001 # .001 to avoid initial collision
+    base_pos[2] -= z_offset
+    voxel_centers[:,2] -= z_offset
+    voxel_origin = voxel_centers.min(axis=0) - voxel_size/2
+    pb.resetBasePositionAndOrientation(obj_id, base_pos, (0.0, 0.0, 0.0, 1))
+    # pb.addUserDebugPoints(voxel_centers, [[0.,1.,0.]]*len(voxel_centers), 25.0)
+
+    # convert positions to voxel grid
+    vijk = ((voxel_pos - voxel_pos.min(axis=0)) / voxel_size).round().astype(int)
+    vijk += 1 # lower padding
+    grid_size = vijk.max(axis=0) + grasp_width + 2 # upper padding
+    voxels = np.zeros(tuple(grid_size))
     for (i,j,k) in vijk: voxels[i,j,k] = 1
 
-    # # plot the voxel grid
+    # # get all the grasp candidates and choose one of them
+    # grasp_candidates = learner.collect_grasp_candidates(exp.env, voxels, voxel_origin)
+    # cand = np.array(grasp_candidates.pop(), dtype=float)
+
+    # # convert candidate to simulator units and coordinates
+    # coords = (cand - 1) * voxel_size # subtract lower padding and convert units
+    # coords += voxel_origin # transform to object position
+
+    # # visualize grasp points in simulator
+    # pb.addUserDebugPoints(coords, [[0.,1.,0.]]*2, 10.0)
+    # pb.addUserDebugPoints([voxel_origin], [[0.,0.,1.]], 25.0)
+
+    # # visualize grasp points in the voxel grid
     # ax = pt.gcf().add_subplot(projection='3d')
-    # ax.voxels(voxels.astype(bool))
+    # ax.voxels(voxels.astype(bool), alpha=0.5)
+    # pt.plot(*cand.T, marker='o', color='red')
     # pt.show()
 
-    # get all the grasp candidates
-    origin = Experiment_obj.basePosition
-    grasp_candidates = learner.collect_grasp_candidates(Experiment_env.env, voxels, origin)
+    trajectories = learner.predict_waypoints(exp.env, voxels, voxel_origin)
+    print(len(trajectories))
 
-    # convert one grasp candidate to simulator coordinates
-    cand = np.array(grasp_candidates.pop(), dtype=float)
-    cand -= half_grasp + 1 # subtract padding
-    cand += 0.5 # add half-voxel for centering
-    cand = voxel_size * cand + origin # transform to simulator coordinates
-
-    # need to debug
-    pb.addUserDebugPoints(cand, [[0.,1.,0.]]*2, 10.0)
-
-    input('.')
+    # try best trajectory
+    input('ready, press enter...')
+    trajectory = trajectories[0]
+    for angles in trajectory:
+        exp.env.goto_position(angles, duration = 2)
+        # input('.')
 
     
     

@@ -738,6 +738,30 @@
             </inertial>
         </link>
         <link name="r_fixed_tip">
+          <contact>
+            <lateral_friction value="1.0"/>
+            <rolling_friction value="1.0"/>
+            <inertia_scaling value="3.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="1.0"/>
+          </contact>
+          <!-- comment visual placeholder to see collision shape -->
+          <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry><box size="0 0 0"/></geometry>
+          </visual>
+          <collision>
+            <origin rpy="0 0 0" xyz="0 0.0125 0"/>
+            <geometry>
+              <box size="0.020 0.025 0.003"/>
+            </geometry>
+          </collision>
+          <inertial>
+            <mass value=".01"/>
+            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+          </inertial>
+        </link>
+        <link name="r_fixed_knuckle">
           <!-- comment visual placeholder to see collision shape -->
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -755,6 +779,13 @@
           </inertial>
         </link>
         <link name="r_moving_tip">
+          <contact>
+            <lateral_friction value="1.0"/>
+            <rolling_friction value="1.0"/>
+            <inertia_scaling value="3.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="1.0"/>
+          </contact>
           <!-- comment visual placeholder to see collision shape -->
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -884,15 +915,32 @@
             <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
           </inertial>
         </link>
+        <link name="l_fixed_knuckle">
+          <!-- comment visual placeholder to see collision shape -->
+          <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry><box size="0 0 0"/></geometry>
+          </visual>
+          <collision>
+            <origin rpy="0 0 0" xyz="0 0.0125 0"/>
+            <geometry>
+              <box size="0.020 0.025 0.003"/>
+            </geometry>
+          </collision>
+          <inertial>
+            <mass value=".01"/>
+            <inertia ixx=".01" ixy="0.0" ixz="0.0" iyy=".01" iyz="0.0" izz=".01"/>
+          </inertial>
+        </link>
         <link name="l_moving_tip">
           <!-- comment visual placeholder to see collision shape -->
-		  <contact>
-      <lateral_friction value="1.0"/>
-      <rolling_friction value="1.0"/>
-      <inertia_scaling value="3.0"/>
-      <contact_cfm value="0.0"/>
-      <contact_erp value="1.0"/>
-    </contact>
+            <contact>
+              <lateral_friction value="1.0"/>
+              <rolling_friction value="1.0"/>
+              <inertia_scaling value="3.0"/>
+              <contact_cfm value="0.0"/>
+              <contact_erp value="1.0"/>
+            </contact>
           <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry><box size="0 0 0"/></geometry>
@@ -1171,6 +1219,13 @@
             <origin rpy="0 0 0" xyz="0 -0.11 -0.01325"/>
             <parent link="r_hand"/>
             <child link="r_fixed_tip"/>
+            <axis xyz="0 0 1"/>
+        </joint>
+        <!-- used to control gripper orientation in IK -->
+        <joint name="r_fixed_knuckle" type="fixed">
+            <origin rpy="0 0 0" xyz="0 0.05 0"/>
+            <parent link="r_fixed_tip"/>
+            <child link="r_fixed_knuckle"/>
         </joint>
         <joint name="r_moving_tip" type="fixed">
             <origin rpy="0 0 0" xyz="-0.0155 -0.0675 0"/>
@@ -1203,6 +1258,13 @@
             <origin rpy="0 0 0" xyz="0 -0.11 -0.01325"/>
             <parent link="l_hand"/>
             <child link="l_fixed_tip"/>
+            <axis xyz="0 0 1"/>
+        </joint>
+        <!-- used to control gripper orientation in IK -->
+        <joint name="l_fixed_knuckle" type="fixed">
+            <origin rpy="0 0 0" xyz="0 0.05 0"/>
+            <parent link="l_fixed_tip"/>
+            <child link="l_fixed_knuckle"/>
         </joint>
         <joint name="l_moving_tip" type="fixed">
             <origin rpy="0 0 0" xyz="-0.0155 -0.0675 0"/>
