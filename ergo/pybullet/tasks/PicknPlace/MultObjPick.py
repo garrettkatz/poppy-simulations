@@ -150,6 +150,7 @@ class Obj:
         self.extents = extents
         self.dim = extents
         self.isMutant = False
+        self.ObjId = -99
         self.basePosition = [0,0,0]
         #self.objId = -99
         #or self.mutants = list of mutants
@@ -169,6 +170,7 @@ class Obj:
         extents.append(dim)
         while len(positions) < NoOfParts:
             # for i in range(no_parts-1):
+            #temp = old_base
             old_base = new_base
             rng_xyz = np.random.randint(3)
             rng_pos_neg = np.random.randint(2)
@@ -179,6 +181,7 @@ class Obj:
             if new_base not in positions:
                 positions.append(new_base.copy())
             else:
+                new_base = old_base
                 continue
             extents.append(dim)
         maxz = np.amin(positions)
@@ -262,6 +265,7 @@ class experiment:
         b_position = (self.t_pos[0], self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz)
         pb.resetBasePositionAndOrientation(ObjInfo, b_position, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
         obj.basePosition = b_position
+        obj.ObjId = ObjInfo
         return ObjInfo
 
     def MoveToPos(self,pos,opening_width,arm="right"):
