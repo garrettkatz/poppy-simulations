@@ -434,8 +434,8 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
         # select highest grasp coordinates
         # (heuristic to avoid object-gripper collision in top-down grasps)
         hi = rest_coords.mean(axis=1)[:, 2].argmax()
-        for i in range(len(rest_coords)):
-            if i > 0:
+        for i in range(len(rest_coords)): # choosing all candidates
+            if i > 0: # respawn object after an attempt.
                 obj_id = exp.Spawn_Object(obj)
                 orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
                 exp.env.settle(exp.env.get_position(), seconds=1)
@@ -589,7 +589,7 @@ if __name__ == "__main__":
        obj = MultObjPick.Obj(dims,n_parts,rgb)
        obj.GenerateObject(dims,n_parts,[0,0,0])
        obj_id = exp.Spawn_Object(obj)
-
+       Mutants = obj.MutateObject()
        # get voxel grid for object
        voxels, voxel_corner = learner.object_to_voxels(obj)
 

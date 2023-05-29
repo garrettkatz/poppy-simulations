@@ -197,18 +197,32 @@ class Obj:
 
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
-        print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
-        print(np.random.randint(0, len(voxel_pos) - 1))
-        print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
+        #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
+        #print(np.random.randint(0, len(voxel_pos) - 1))
+        #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
         self.PositionsAvailable,_ = self.GetOpenPosition()
 
         new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Obj.PositionsAvailable[
-            np.random.randint(0, len(voxel_pos) - 1)]  # worst location on fitness function
+            np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
         newobj = Obj(new_mutant_obj_pos,self.extents,self.NoOfParts,self.rgb)
         newobj.isMutant= True
-        newobj.ParentId = 1
+        newobj.ParentId = self.ObjId
         return newobj
-
+    def Multiple_MutateObject(self):
+        new_mutant_obj_pos = self.positions.copy()
+        #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
+        #print(np.random.randint(0, len(voxel_pos) - 1))
+        #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
+        self.PositionsAvailable,_ = self.GetOpenPosition()
+        MutantList = []
+        for i in range(len(self.PositionsAvailable)):
+            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Obj.PositionsAvailable[
+                np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
+            newobj = Obj(new_mutant_obj_pos,self.extents,self.NoOfParts,self.rgb)
+            newobj.isMutant= True
+            newobj.ParentId = self.ObjId
+            MutantList.append(newobj)
+        return MutantList
 
     def _SpawnObject(self,env,dim,noofparts,basepos):
         self.GenerateObject(dim,noofparts,basepos)
