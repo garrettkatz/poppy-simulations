@@ -221,6 +221,7 @@ class Obj:
             newobj = Obj(new_mutant_obj_pos,self.extents,self.NoOfParts,self.rgb)
             newobj.isMutant= True
             newobj.ParentId = self.ObjId
+            self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
             MutantList.append(newobj)
         return MutantList
 
