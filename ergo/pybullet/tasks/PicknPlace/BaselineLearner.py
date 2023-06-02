@@ -301,7 +301,7 @@ class BaselineLearner:
         Num_Grips_attempted = 0
 
         Result = []
-        for iter in range(100):
+        for iter in range(30):
             exp = MultObjPick.experiment()
             exp.CreateScene()
             env = exp.env
@@ -593,7 +593,7 @@ if __name__ == "__main__":
     table_height = table_position()[2] + table_half_extents()[2] # z coordinate of table surface
 
     learner = BaselineLearner(grasp_width, voxel_size)
-    learner.Experiment1_MultipleRandomObjects_OneGrip()
+    #learner.Experiment1_MultipleRandomObjects_OneGrip()
     Num_success = 0
     Num_Grips_attempted = 0
     exp = MultObjPick.experiment()

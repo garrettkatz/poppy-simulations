@@ -200,11 +200,13 @@ class Obj:
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
         #print(np.random.randint(0, len(voxel_pos) - 1))
         #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
-        self.PositionsAvailable,_ = self.GetOpenPosition()
+        obj = self.GetOpenPosition()
+        #self.PositionsAvailable = obj.PositionsAvailable
 
-        new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Obj.PositionsAvailable[
+        new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[
             np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
-        newobj = Obj(new_mutant_obj_pos,self.extents,self.NoOfParts,self.rgb)
+        newobj = Obj(self.extents,self.NoOfParts,self.rgb)
+        newobj.positions = new_mutant_obj_pos
         newobj.isMutant= True
         newobj.ParentId = self.ObjId
         return newobj
@@ -218,7 +220,8 @@ class Obj:
         for i in range(len(self.PositionsAvailable)):
             new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Obj.PositionsAvailable[
                 np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
-            newobj = Obj(new_mutant_obj_pos,self.extents,self.NoOfParts,self.rgb)
+            newobj = Obj(self.extents,self.NoOfParts,self.rgb)
+            newobj.positions = new_mutant_obj_pos
             newobj.isMutant= True
             newobj.ParentId = self.ObjId
             self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
