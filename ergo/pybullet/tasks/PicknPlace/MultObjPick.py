@@ -218,13 +218,12 @@ class Obj:
         self.PositionsAvailable,_ = self.GetOpenPosition()
         MutantList = []
         for i in range(len(self.PositionsAvailable)):
-            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Obj.PositionsAvailable[
-                np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
+            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i]  # all available locations
             newobj = Obj(self.extents,self.NoOfParts,self.rgb)
             newobj.positions = new_mutant_obj_pos
-            newobj.isMutant= True
+            newobj.isMutant = True
             newobj.ParentId = self.ObjId
-            self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
+            #self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
             MutantList.append(newobj)
         return MutantList
 
