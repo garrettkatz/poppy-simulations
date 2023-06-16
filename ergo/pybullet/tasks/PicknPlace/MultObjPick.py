@@ -95,7 +95,7 @@ def ObjectOpenPositions(positions, extents):
 
             new_base2[i] = base[i] + 2 * dim[i]
             if new_base2 not in positions:
-                voxel_positions.append(new_base2)
+                voxel_positions.awwwppend(new_base2)
     return extents, voxel_positions
 
 
@@ -215,10 +215,10 @@ class Obj:
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
         #print(np.random.randint(0, len(voxel_pos) - 1))
         #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
-        self.PositionsAvailable,_ = self.GetOpenPosition()
+        self = self.GetOpenPosition()
         MutantList = []
         for i in range(len(self.PositionsAvailable)):
-            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i]  # all available locations
+            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i].copy()  # all available locations
             newobj = Obj(self.extents,self.NoOfParts,self.rgb)
             newobj.positions = new_mutant_obj_pos
             newobj.isMutant = True
@@ -263,6 +263,7 @@ class experiment:
         add_table()
         self.t_pos = table_position()
         self.t_ext = table_half_extents()
+        self.init_robot_pos = []
 
     def CreateScene(self):
 
@@ -271,8 +272,13 @@ class experiment:
          #   3) * np.array([0.5, 0, 0])
         angles = self.env.angle_dict(self.env.get_position())
         angles.update({"l_elbow_y": -90, "r_elbow_y": -90, "head_y": 35})
+        self.init_robot_pos = self.env.angle_array(angles).copy()
         self.env.set_position(self.env.angle_array(angles))
         return 0
+    def reset_robot(self):
+        self.env.set_position(self.init_robot_pos)
+        return 0
+
     def Spawn_Object(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
         Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
         ObjInfo = add_box_compound(Boxes)

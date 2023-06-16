@@ -615,10 +615,8 @@ if __name__ == "__main__":
         obj = MultObjPick.Obj(dims, n_parts, rgb)
         obj.GenerateObject(dims, n_parts, [0, 0, 0])
         obj_id = exp.Spawn_Object(obj)
-        Mutant = obj.MutateObject()
-        if iter%2 == 1:
-            obj_id = exp.Spawn_Object(Mutant)
-        # get voxel grid for object
+        #Mutant = obj.MutateObject()
+        mutants = obj.Multiple_MutateObject()
         voxels, voxel_corner = learner.object_to_voxels(obj)
 
         # get candidate grasp points
@@ -670,6 +668,8 @@ if __name__ == "__main__":
             Num_success = Num_success + 1
         Result.append((picked_pos[2] - rest_pos[2]) * 10)
         pb.removeBody(obj_id)
+        exp.reset_robot()
+
         exp.env.close()
     print("\nNum of grip attempt:", Num_Grips_attempted)
     print("\n Num of successful picks", Num_success)
