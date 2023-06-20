@@ -669,6 +669,46 @@ if __name__ == "__main__":
         Result.append((picked_pos[2] - rest_pos[2]) * 10)
         pb.removeBody(obj_id)
         exp.reset_robot()
+        for mut in mutants:
+            #obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
+            #obj.GenerateObject(dims, n_parts, [0, 0, 0])
+            obj_id = exp.Spawn_Object(mut)
+            voxels, voxel_corner = learner.object_to_voxels(mut)
+            # get candidate grasp points
+            cands = learner.collect_grasp_candidates(voxels)
+            # convert back to simulator units
+            coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+            exp.env.settle(exp.env.get_position(), seconds=3) # wait for object to settle since its dropped from a small height
+            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+            if rest_pos[2] < table_height: # object falls/tumbles off , ignore this case
+                pb.removeBody(obj_id)
+                exp.env.close()
+                continue
+                # transform grasp coordinates to object pose
+                # transform grasp coordinates to object pose
+            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+            M = np.array(M).reshape(3, 3)
+            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+
+                # # visualize grasp points in simulator
+                # pb.addUserDebugPoints(rest_coords[0], [[0.,1.,0.]]*2, 25.0)
+
+                # select highest grasp coordinates
+                # (heuristic to avoid object-gripper collision in top-down grasps)
+            hi = rest_coords.mean(axis=1)[:, 2].argmax()
+            grip_points = rest_coords[hi]
+            trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+            for angles in trajectory:
+                exp.env.goto_position(angles, duration=2)
+                exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
+                # input('.')
+            picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+            Num_Grips_attempted = Num_Grips_attempted + 1
+            if picked_pos[2] > rest_pos[2]:
+                print("pick success! -- ", obj_id)
+                Num_success = Num_success + 1
+            Result.append((picked_pos[2] - rest_pos[2]) * 10)
 
         exp.env.close()
     print("\nNum of grip attempt:", Num_Grips_attempted)
