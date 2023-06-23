@@ -220,9 +220,10 @@ class Obj:
         for i in range(len(self.PositionsAvailable)):
             new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i].copy()  # all available locations
             newobj = Obj(self.extents,self.NoOfParts,self.rgb)
-            newobj.positions = new_mutant_obj_pos
+            newobj.positions = new_mutant_obj_pos.copy()
             newobj.isMutant = True
             newobj.ParentId = self.ObjId
+            newobj.dim = self.dim.copy()
             #self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
             MutantList.append(newobj)
         return MutantList
