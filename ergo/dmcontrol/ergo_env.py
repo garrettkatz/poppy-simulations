@@ -81,7 +81,8 @@ if __name__ == "__main__":
 
     env = ErgoEnv(control_period = 10)
 
-    kp = 30*np.ones(31)
+    # kp = 30*np.ones(31)
+    kp = 0*np.ones(31)
     # kp = 20 + 30000*np.ones(31)
     ts = env.reset(kp)
 

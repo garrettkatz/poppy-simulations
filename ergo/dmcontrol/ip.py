@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as pt
 import matplotlib.animation as animation
 
@@ -17,7 +18,7 @@ for x in [-2, 2]:
 model = mjcf.RootElement()
 model.compiler.angle = 'radian'  # Use radians.
 
-model.default.joint.damping = 2
+model.default.joint.damping = 0
 model.default.joint.type = 'hinge'
 model.default.geom.type = 'capsule'
 model.default.geom.rgba = (.25, .5, .75, 1)
@@ -26,16 +27,16 @@ length = 1
 sz = length/8
 
 # base joint
-base = model.worldbody.add('body')
-fulcrum = base.add('joint', axis=[0,1,0])
+base = model.worldbody.add('body', name='base')
+fulcrum = base.add('joint', axis=[0,1,0], name='fulcrum')
 base.add('geom', type='sphere', size=[sz])
 
 # link
-pendulum = base.add('body')
+pendulum = base.add('body', name='rod')
 rod = pendulum.add('geom', fromto=[0,0,0, 0,0,length], size=[sz])
 
 # control
-model.actuator.add('position', joint=fulcrum, kp=1000)
+model.actuator.add('position', joint=fulcrum, kp=0)
 actuators = model.find_all('actuator')
 
 # attach to floor
@@ -44,17 +45,25 @@ spawn_site.attach(model)
 
 # initial angle
 physics = mjcf.Physics.from_mjcf_model(arena)
-physics.data.qpos[0] = .1
+
+with physics.reset_context():
+    physics.data.qpos[0] = np.pi/4
 
 # run simulation
 print('sim...')
 video = []
-for t in range(100):
+for t in range(300):
 
     print(t, physics.data.qpos)
+    # print(actuators)
+    # print(physics.named.data.xfrc_applied['unnamed_model/rod'])
 
-    for s in range(20):
-        physics.bind(actuators).ctrl = [.3]
+    for s in range(5):
+        if t < 5:
+            physics.named.data.xfrc_applied['unnamed_model/rod'][2] = 10000
+        else:
+            physics.named.data.xfrc_applied['unnamed_model/rod'][2] = 0
+        # physics.bind(actuators).ctrl = [-.3]
         physics.step()
 
     arr = physics.render()
