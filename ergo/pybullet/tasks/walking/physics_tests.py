@@ -30,20 +30,22 @@ for _ in range(100):
     pb.stepSimulation()
     time.sleep(0.01)
 
+print(pb.getJointInfo(robot_id, joint_idx["right_ankle"])[8:10])
 input('.')
 
 pb.enableJointForceTorqueSensor(robot_id, joint_idx["right_ankle"])
 
 # pb.setJointMotorControl2(robot_id, joint_idx["left_ankle"], pb.POSITION_CONTROL, targetPosition=np.pi/8)
 # while True:
-for _ in range(100):
+for _ in range(10000):
     pb.setJointMotorControl2(robot_id, joint_idx["right_ankle"], pb.TORQUE_CONTROL, force=0.)
     for i in range(len(joint_idx)):
         pb.setJointMotorControl2(robot_id, i, pb.TORQUE_CONTROL, force=0.)
     pb.stepSimulation()
-    time.sleep(0.01)
-    print(pb.getJointState(robot_id, joint_idx["right_ankle"]))
+    # time.sleep(0.01)
+    print(pb.getJointState(robot_id, joint_idx["right_ankle"])[0])
     # input('.')
 
+input('.')
 pb.disconnect()
 
