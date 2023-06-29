@@ -676,11 +676,12 @@ if __name__ == "__main__":
     Num_Grips_attempted = 0
 
     Result = []
-    for iter in range(30):
+    for iter in range(2):
         exp = MultObjPick.experiment()
         exp.CreateScene()
         env = exp.env
-
+        Obj_result = []
+        Obj_result.clear()
         pb.resetDebugVisualizerCamera(
             cameraDistance=1.4,
             cameraYaw=-1.2,
@@ -746,12 +747,13 @@ if __name__ == "__main__":
         if picked_pos[2] > rest_pos[2]:
             print("pick success! -- ", obj_id)
             Num_success = Num_success + 1
-        Result.append((picked_pos[2] - rest_pos[2]) * 10)
+        Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
         pb.removeBody(obj_id)
         exp.reset_robot()
         for mut in mutants:
             #obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
             #obj.GenerateObject(dims, n_parts, [0, 0, 0])
+            exp.reset_robot()
             obj_id = exp.Spawn_Object(mut)
             voxels, voxel_corner = learner.object_to_voxels(mut)
             # get candidate grasp points
@@ -788,15 +790,17 @@ if __name__ == "__main__":
             if picked_pos[2] > rest_pos[2]:
                 print("pick success! -- ", obj_id)
                 Num_success = Num_success + 1
-            Result.append((picked_pos[2] - rest_pos[2]) * 10)
+            Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
             pb.removeBody(obj_id)
-
+        Result.append(Obj_result)
         exp.env.close()
+
     print("\nNum of grip attempt:", Num_Grips_attempted)
     print("\n Num of successful picks", Num_success)
     import matplotlib.pyplot as plt
-
-    plt.plot(Result)
+    for r in Result:
+        plt.plot(r)
     plt.ylabel("Z-axis difference")
+    plt.xlabel("Mutations")
     plt.show()
 
