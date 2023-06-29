@@ -215,7 +215,7 @@ class Obj:
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
         #print(np.random.randint(0, len(voxel_pos) - 1))
         #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
-        self = self.GetOpenPosition()
+        self.GetOpenPosition()
         MutantList = []
         for i in range(len(self.PositionsAvailable)):
             new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i].copy()  # all available locations
@@ -235,10 +235,10 @@ class Obj:
         return ObjInfo
 
     def GetOpenPosition(self):
-        positions = self.positions
+        positions = self.positions.copy()
         extents = self.extents
         voxel_dim = extents[0]
-        voxel_positions = positions.copy()
+        voxel_positions = []
         # add to voxel position
         for pos in positions:
             for i in range(3):  # xyz
