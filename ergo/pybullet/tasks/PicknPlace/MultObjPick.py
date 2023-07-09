@@ -301,6 +301,9 @@ class experiment:
         self.env.goto_position(i_k, 1)
         print("Moving-1")
         return 1
+
+    def Tip_Collision_detect(self):
+        return 0
     def MoveThroughPoints(self,Targets):
 
         for tar in Targets:

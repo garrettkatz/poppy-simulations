@@ -140,14 +140,20 @@ class BaselineLearner:
                     idx = env.joint_index[f"{other_arm}_{joint_name}"]
                     # angles[w][idx] = 0
                     angles[w][idx] = start_angles[idx]
-
+                
                 # env.set_position(angles[w])
                 # print(max_error[i])
                 # input('..')
-
+            #angle[w][x] < 0 , continue
             trajectory = [angles[w] for w in range(len(waypoints))]
+            if trajectory[len(trajectory) - 1][env.joint_index[f"{arm}_gripper"]] > 0.5:
+                continue
+            if trajectory[len(trajectory) - 1][env.joint_index[f"{other_arm}_gripper"]] > 0.5:
+                continue
             trajectories.append(trajectory)
 
+            print(trajectory[3][28])
+            print(trajectory[3][38])
             env.set_position(start_angles)
 
         # choose trajectory with lower max error
