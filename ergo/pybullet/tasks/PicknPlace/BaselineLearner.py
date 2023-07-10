@@ -742,7 +742,7 @@ if __name__ == "__main__":
         Avg_result = np.sum(interm_result) / len(interm_result)
 
         mutants = obj.Multiple_MutateObject()
-
+        Mutant_G1_result = []
         for mut in mutants:
             # obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
             # obj.GenerateObject(dims, n_parts, [0, 0, 0])
@@ -773,6 +773,7 @@ if __name__ == "__main__":
             # select highest grasp coordinates
             # (heuristic to avoid object-gripper collision in top-down grasps)
             hi = rest_coords.mean(axis=1)[:, 2].argmax()
+            G1_interm_result = []
             for i in range(len(rest_coords)):  # choosing all candidates
                 if i > 0:  # respawn object after an attempt.
                     exp.reset_robot()
@@ -804,6 +805,12 @@ if __name__ == "__main__":
                 if picked_pos[2] > rest_pos[2]:
                     print("pick success! -- ", obj_id)
                     Num_success = Num_success + 1
-                interm_result.append(interm_result + (picked_pos[2] - rest_pos[2]))
+                G1_interm_result.append(interm_result + (picked_pos[2] - rest_pos[2]))
                 pb.removeBody(obj_id)
-            Avg_result = np.sum(interm_result) / len(interm_result)
+            Avg_result = np.sum(G1_interm_result) / len(G1_interm_result)
+            Mutant_G1_result.append(Avg_result)
+
+        Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
+
+        for i in range(2):
+            NewParents = [mutants[j] for j in Top4Index]
