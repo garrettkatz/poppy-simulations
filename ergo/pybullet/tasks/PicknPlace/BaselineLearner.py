@@ -133,6 +133,8 @@ class BaselineLearner:
             
                 # try to reach
                 angles[w], out_of_range, error = env.partial_ik(links, targets, angles[w-1], free, num_iters=3000)
+                if angles[w][env.joint_index[f"{arm}_gripper"]] <0.5:
+                    continue
                 max_error[i] = max(max_error[i], error)
 
                 # don't change other arm angles
@@ -146,18 +148,16 @@ class BaselineLearner:
                 # input('..')
             #angle[w][x] < 0 , continue
             trajectory = [angles[w] for w in range(len(waypoints))]
-            if trajectory[len(trajectory) - 1][env.joint_index[f"{arm}_gripper"]] > 0.5:
-                continue
-            if trajectory[len(trajectory) - 1][env.joint_index[f"{other_arm}_gripper"]] > 0.5:
-                continue
+           # if trajectory[len(trajectory) - 1][env.joint_index[f"{arm}_gripper"]] > 0.5:
+          #      continue
+           # if trajectory[len(trajectory) - 1][env.joint_index[f"{other_arm}_gripper"]] > 0.5:
+           #     continue
             trajectories.append(trajectory)
-
-            print(trajectory[3][28])
-            print(trajectory[3][38])
             env.set_position(start_angles)
 
         # choose trajectory with lower max error
         choice = np.argmin(max_error)
+
         trajectory = trajectories[choice]
 
         return trajectory
@@ -430,7 +430,7 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
 
         # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
         orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-        exp.env.settle(exp.env.get_position(), seconds=1)
+        exp.env.settle(exp.env.get_position(), seconds=2)
         rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
 
         # abort if object fell off of table
@@ -455,7 +455,7 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
             if i > 0: # respawn object after an attempt.
                 obj_id = exp.Spawn_Object(obj)
                 orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-                exp.env.settle(exp.env.get_position(), seconds=1)
+                exp.env.settle(exp.env.get_position(), seconds=2)
                 rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
 
                 # abort if object fell off of table
@@ -513,11 +513,12 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
     Num_Grips_attempted = 0
 
     Result = []
-    for iter in range(30):
+    for iter in range(2):
         exp = MultObjPick.experiment()
         exp.CreateScene()
         env = exp.env
-
+        Obj_result = []
+        Obj_result.clear()
         pb.resetDebugVisualizerCamera(
             cameraDistance=1.4,
             cameraYaw=-1.2,
@@ -583,12 +584,13 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
         if picked_pos[2] > rest_pos[2]:
             print("pick success! -- ", obj_id)
             Num_success = Num_success + 1
-        Result.append((picked_pos[2] - rest_pos[2]) * 10)
+        Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
         pb.removeBody(obj_id)
         exp.reset_robot()
         for mut in mutants:
             # obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
             # obj.GenerateObject(dims, n_parts, [0, 0, 0])
+            exp.reset_robot()
             obj_id = exp.Spawn_Object(mut)
             voxels, voxel_corner = learner.object_to_voxels(mut)
             # get candidate grasp points
@@ -626,50 +628,23 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
             if picked_pos[2] > rest_pos[2]:
                 print("pick success! -- ", obj_id)
                 Num_success = Num_success + 1
-            Result.append((picked_pos[2] - rest_pos[2]) * 10)
+            Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
             pb.removeBody(obj_id)
-
+        Result.append(Obj_result)
         exp.env.close()
+
     print("\nNum of grip attempt:", Num_Grips_attempted)
     print("\n Num of successful picks", Num_success)
     import matplotlib.pyplot as plt
-
-    plt.plot(Result)
+    for r in Result:
+        plt.plot(r)
     plt.ylabel("Z-axis difference")
+    plt.xlabel("Mutations")
     plt.show()
 
 
 if __name__ == "__main__":
 
-    # grid_size = 10
-    # num_voxels = 30
-
-    # # random voxel grid generation
-    # nonzeros = np.empty((num_voxels, 3), dtype=int)
-    # nonzeros[0,:] = grid_size//2
-    # for v in range(1, num_voxels):
-    #     n = np.random.randint(v)
-    #     nonzeros[v] = nonzeros[n]
-    #     nonzeros[v, np.random.randint(3)] += np.sign(np.random.randn())
-    # nonzeros = nonzeros[(0 < nonzeros).all(axis=1) & (nonzeros < grid_size-1).all(axis=1)]
-    # voxels = np.zeros((grid_size,)*3)
-    # voxels[tuple(nonzeros.T)] = 1
-
-    # # learner API
-    # env, origin = None, None
-    # learner = BaselineLearner()
-    # grasp_candidates, waypoints  = learner.predict_waypoints(env, voxels, origin)
-
-    # # TBD:
-    # # reward = env.run_trajectory(waypoints)
-    # # learner.learn(env, voxels, grasp_candidates, waypoints, reward)
-
-    # ax = pt.gcf().add_subplot(projection='3d')
-    # ax.voxels(voxels.astype(bool))
-    # ax.scatter(*zip(*(grasp_candidates + 0.5)), color='red')
-    # pt.show()
-    # Experiment details:
-    # One set of grip points selected from a list of candidate grips per object.
     import MultObjPick
     import pybullet as pb
 
@@ -702,8 +677,8 @@ if __name__ == "__main__":
         obj = MultObjPick.Obj(dims, n_parts, rgb)
         obj.GenerateObject(dims, n_parts, [0, 0, 0])
         obj_id = exp.Spawn_Object(obj)
-        #Mutant = obj.MutateObject()
-        mutants = obj.Multiple_MutateObject()
+        # Mutant = obj.MutateObject()
+
         voxels, voxel_corner = learner.object_to_voxels(obj)
 
         # get candidate grasp points
@@ -728,65 +703,31 @@ if __name__ == "__main__":
         M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
         M = np.array(M).reshape(3, 3)
         rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+        interm_result = []
+        #pb.removeBody(obj_id)
+        Avg_result = 0
+        for i in range(len(rest_coords)): # choosing all candidates
+            if i > 0: # respawn object after an attempt.
+                exp.reset_robot()
+                obj_id = exp.Spawn_Object(obj)
+                orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+                exp.env.settle(exp.env.get_position(), seconds=2)
+                rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
 
-        # # visualize grasp points in simulator
-        # pb.addUserDebugPoints(rest_coords[0], [[0.,1.,0.]]*2, 25.0)
+                # abort if object fell off of table
+                if rest_pos[2] < table_height:
+                    pb.removeBody(obj_id)
+                    continue
+                # sys.exit(0)
 
-        # select highest grasp coordinates
-        # (heuristic to avoid object-gripper collision in top-down grasps)
-        hi = rest_coords.mean(axis=1)[:, 2].argmax()
-        grip_points = rest_coords[hi]
-        trajectory = learner.get_pick_trajectory(exp.env, grip_points)
-
-        # visualize grasp points in the voxel grid
-        # ax = pt.gcf().add_subplot(projection='3d')
-        # ax.voxels(voxels.astype(bool), alpha=0.5)
-        # pt.plot(*cands[0].T, marker='o', color='red')
-        # pt.show()
-        # try best trajectory
-        for angles in trajectory:
-            exp.env.goto_position(angles, duration=2)
-            exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
-            # input('.')
-        picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
-        Num_Grips_attempted = Num_Grips_attempted + 1
-        if picked_pos[2] > rest_pos[2]:
-            print("pick success! -- ", obj_id)
-            Num_success = Num_success + 1
-        Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
-        pb.removeBody(obj_id)
-        exp.reset_robot()
-        for mut in mutants:
-            #obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
-            #obj.GenerateObject(dims, n_parts, [0, 0, 0])
-            exp.reset_robot()
-            obj_id = exp.Spawn_Object(mut)
-            voxels, voxel_corner = learner.object_to_voxels(mut)
-            # get candidate grasp points
-            cands = learner.collect_grasp_candidates(voxels)
-            # convert back to simulator units
-            coords = learner.voxel_to_sim_coords(cands, voxel_corner)
-            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-            exp.env.settle(exp.env.get_position(), seconds=3) # wait for object to settle since its dropped from a small height
-            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
-            if rest_pos[2] < table_height: # object falls/tumbles off , ignore this case
-                pb.removeBody(obj_id)
-                exp.env.close()
-                continue
                 # transform grasp coordinates to object pose
-                # transform grasp coordinates to object pose
-            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
-            M = np.array(M).reshape(3, 3)
-            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
-
-                # # visualize grasp points in simulator
-                # pb.addUserDebugPoints(rest_coords[0], [[0.,1.,0.]]*2, 25.0)
-
-                # select highest grasp coordinates
-                # (heuristic to avoid object-gripper collision in top-down grasps)
-            hi = rest_coords.mean(axis=1)[:, 2].argmax()
-            grip_points = rest_coords[hi]
+                M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+                M = np.array(M).reshape(3, 3)
+                rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+            grip_points = rest_coords[i]
             trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+            # try best trajectory
             for angles in trajectory:
                 exp.env.goto_position(angles, duration=2)
                 exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
@@ -796,17 +737,73 @@ if __name__ == "__main__":
             if picked_pos[2] > rest_pos[2]:
                 print("pick success! -- ", obj_id)
                 Num_success = Num_success + 1
-            Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
+            interm_result .append(picked_pos[2] - rest_pos[2])
             pb.removeBody(obj_id)
-        Result.append(Obj_result)
-        exp.env.close()
+        Avg_result = np.sum(interm_result) / len(interm_result)
 
-    print("\nNum of grip attempt:", Num_Grips_attempted)
-    print("\n Num of successful picks", Num_success)
-    import matplotlib.pyplot as plt
-    for r in Result:
-        plt.plot(r)
-    plt.ylabel("Z-axis difference")
-    plt.xlabel("Mutations")
-    plt.show()
+        mutants = obj.Multiple_MutateObject()
 
+        for mut in mutants:
+            # obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
+            # obj.GenerateObject(dims, n_parts, [0, 0, 0])
+            exp.reset_robot()
+            obj_id = exp.Spawn_Object(mut)
+            voxels, voxel_corner = learner.object_to_voxels(mut)
+            # get candidate grasp points
+            cands = learner.collect_grasp_candidates(voxels)
+            # convert back to simulator units
+            coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+            exp.env.settle(exp.env.get_position(),
+                           seconds=3)  # wait for object to settle since its dropped from a small height
+            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+            if rest_pos[2] < table_height:  # object falls/tumbles off , ignore this case
+                pb.removeBody(obj_id)
+                exp.env.close()
+                continue
+                # transform grasp coordinates to object pose
+                # transform grasp coordinates to object pose
+            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+            M = np.array(M).reshape(3, 3)
+            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+
+            # # visualize grasp points in simulator
+            # pb.addUserDebugPoints(rest_coords[0], [[0.,1.,0.]]*2, 25.0)
+
+            # select highest grasp coordinates
+            # (heuristic to avoid object-gripper collision in top-down grasps)
+            hi = rest_coords.mean(axis=1)[:, 2].argmax()
+            for i in range(len(rest_coords)):  # choosing all candidates
+                if i > 0:  # respawn object after an attempt.
+                    exp.reset_robot()
+                    obj_id = exp.Spawn_Object(obj)
+                    orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+                    exp.env.settle(exp.env.get_position(), seconds=2)
+                    rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+                    # abort if object fell off of table
+                    if rest_pos[2] < table_height:
+                        pb.removeBody(obj_id)
+                        continue
+                    # sys.exit(0)
+
+                    # transform grasp coordinates to object pose
+                    M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+                    M = np.array(M).reshape(3, 3)
+                    rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+                grip_points = rest_coords[i]
+                trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+                # try best trajectory
+                for angles in trajectory:
+                    exp.env.goto_position(angles, duration=2)
+                    exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
+                    # input('.')
+                picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+                Num_Grips_attempted = Num_Grips_attempted + 1
+                if picked_pos[2] > rest_pos[2]:
+                    print("pick success! -- ", obj_id)
+                    Num_success = Num_success + 1
+                interm_result.append(interm_result + (picked_pos[2] - rest_pos[2]))
+                pb.removeBody(obj_id)
+            Avg_result = np.sum(interm_result) / len(interm_result)
