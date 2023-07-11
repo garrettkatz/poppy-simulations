@@ -498,6 +498,9 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
         plt.plot(Result)
         plt.ylabel("Avg Z-axis difference")
         plt.show()
+    def PerformExperimentAllgrips(exp,learner,grip_points):
+        import MultObjPick
+        import pybullet as pb
 
 
 def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
@@ -641,6 +644,8 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
     plt.ylabel("Z-axis difference")
     plt.xlabel("Mutations")
     plt.show()
+
+
 
 
 if __name__ == "__main__":
@@ -811,6 +816,51 @@ if __name__ == "__main__":
             Mutant_G1_result.append(Avg_result)
 
         Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
-
-        for i in range(2):
+        # Best Mutant candidates for next generation / Least grippable objects
+        Overall_Mutants_result = []
+        num_generations =10
+        for i in range(num_generations):
+            Mutant_newgen_result = []
             NewParents = [mutants[j] for j in Top4Index]
+            mutants.clear()
+            for parent in NewParents:
+                p_mutants = parent.Multiple_MutateObject()
+                mutants = mutants+p_mutants
+                for child in p_mutants:
+                    obj_id = exp.Spawn_Object(child)
+                    voxels, voxel_corner = learner.object_to_voxels(child)
+                    cands = learner.collect_grasp_candidates(voxels)
+                    coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+                    orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+                    exp.env.settle(exp.env.get_position(),seconds=3)  # wait for object to settle since its dropped from a small height
+                    rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+                    if rest_pos[2] < table_height:  # object falls/tumbles off , ignore this case
+                        pb.removeBody(obj_id)
+                        exp.env.close()
+                        continue
+                    M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+                    M = np.array(M).reshape(3, 3)
+                    rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+                    OneMutant_result = []
+                    for j in range(len(rest_coords)):
+
+                        if j > 0:  # respawn object after an attempt.
+                            exp.reset_robot()
+                            obj_id = exp.Spawn_Object(obj)
+                            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+                            exp.env.settle(exp.env.get_position(), seconds=2)
+                            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+                            # abort if object fell off of table
+                            if rest_pos[2] < table_height:
+                                pb.removeBody(obj_id)
+                                continue
+                        grip_points = rest_coords[i]
+                        trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+                        for angles in trajectory:
+                            exp.env.goto_position(angles, duration=2)
+                            exp.env.goto_position(angles,duration=.1)  # in case it needs a little more time to converge
+
+                        picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+
+            Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
