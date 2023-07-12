@@ -827,6 +827,7 @@ if __name__ == "__main__":
             NewParents = [mutants[j] for j in Top4Index]
             mutants.clear()
             g_result = []
+            g_result.clear()
             for parent in NewParents:
                 p_mutants = parent.Multiple_MutateObject()
                 mutants = mutants+p_mutants
@@ -872,6 +873,6 @@ if __name__ == "__main__":
                     mutant_avg.append(np.sum(mutant_error)/len(mutant_error))
                 g_result.append(mutant_avg)
             Generation_results.append(g_result)
-            Top4Index = sorted(range(len(Generation_results.flatten())), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
+            Top4Index = sorted(range(len(g_result)), key=lambda i: g_result[i], reverse=True)[-4:]
 
 #pickle to load/save graphs
