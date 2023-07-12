@@ -136,6 +136,7 @@ class BaselineLearner:
                 if angles[w][env.joint_index[f"{arm}_gripper"]] <0.5:
                     continue
                 max_error[i] = max(max_error[i], error)
+                #max_error.append(max(max_error[i], error))
 
                 # don't change other arm angles
                 for joint_name in ("shoulder_x", "shoulder_y", "arm_z", "elbow_y"):
@@ -662,7 +663,8 @@ if __name__ == "__main__":
     Num_Grips_attempted = 0
 
     Result = []
-    for iter in range(2):
+    num_objects= 2
+    for iter in range(num_objects):
         exp = MultObjPick.experiment()
         exp.CreateScene()
         env = exp.env
@@ -810,7 +812,7 @@ if __name__ == "__main__":
                 if picked_pos[2] > rest_pos[2]:
                     print("pick success! -- ", obj_id)
                     Num_success = Num_success + 1
-                G1_interm_result.append(interm_result + (picked_pos[2] - rest_pos[2]))
+                G1_interm_result.append((picked_pos[2] - rest_pos[2]))
                 pb.removeBody(obj_id)
             Avg_result = np.sum(G1_interm_result) / len(G1_interm_result)
             Mutant_G1_result.append(Avg_result)
@@ -819,13 +821,17 @@ if __name__ == "__main__":
         # Best Mutant candidates for next generation / Least grippable objects
         Overall_Mutants_result = []
         num_generations =10
+        Generation_results =[]
         for i in range(num_generations):
             Mutant_newgen_result = []
             NewParents = [mutants[j] for j in Top4Index]
             mutants.clear()
+            g_result = []
             for parent in NewParents:
                 p_mutants = parent.Multiple_MutateObject()
                 mutants = mutants+p_mutants
+                mutant_avg =0
+                mutant_error = []
                 for child in p_mutants:
                     obj_id = exp.Spawn_Object(child)
                     voxels, voxel_corner = learner.object_to_voxels(child)
@@ -862,5 +868,10 @@ if __name__ == "__main__":
                             exp.env.goto_position(angles,duration=.1)  # in case it needs a little more time to converge
 
                         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+                        mutant_error.append((picked_pos[2] - rest_pos[2]))
+                    mutant_avg.append(np.sum(mutant_error)/len(mutant_error))
+                g_result.append(mutant_avg)
+            Generation_results.append(g_result)
+            Top4Index = sorted(range(len(Generation_results.flatten())), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
 
-            Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
+#pickle to load/save graphs
