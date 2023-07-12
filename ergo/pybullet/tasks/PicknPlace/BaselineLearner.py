@@ -647,7 +647,7 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
     plt.show()
 
 
-
+import pickle
 
 if __name__ == "__main__":
 
@@ -663,7 +663,7 @@ if __name__ == "__main__":
     Num_Grips_attempted = 0
 
     Result = []
-    num_objects= 2
+    num_objects= 1
     for iter in range(num_objects):
         exp = MultObjPick.experiment()
         exp.CreateScene()
@@ -747,7 +747,7 @@ if __name__ == "__main__":
             interm_result .append(picked_pos[2] - rest_pos[2])
             pb.removeBody(obj_id)
         Avg_result = np.sum(interm_result) / len(interm_result)
-
+        
         mutants = obj.Multiple_MutateObject()
         Mutant_G1_result = []
         for mut in mutants:
@@ -816,7 +816,8 @@ if __name__ == "__main__":
                 pb.removeBody(obj_id)
             Avg_result = np.sum(G1_interm_result) / len(G1_interm_result)
             Mutant_G1_result.append(Avg_result)
-
+        with open('Gen1_results.pickle','wb') as handle:
+            pickle.dump(Mutant_G1_result,handle,protocol=pickle.HIGHEST_PROTOCOL)
         Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
         # Best Mutant candidates for next generation / Least grippable objects
         Overall_Mutants_result = []
@@ -874,5 +875,9 @@ if __name__ == "__main__":
                 g_result.append(mutant_avg)
             Generation_results.append(g_result)
             Top4Index = sorted(range(len(g_result)), key=lambda i: g_result[i], reverse=True)[-4:]
+        with open('Generational_results.pickle','wb') as handle:
+            pickle.dump(Generation_results,handle,protocol=pickle.HIGHEST_PROTOCOL)
+import pickle
+
 
 #pickle to load/save graphs
