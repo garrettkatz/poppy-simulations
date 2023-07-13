@@ -747,7 +747,7 @@ if __name__ == "__main__":
             interm_result .append(picked_pos[2] - rest_pos[2])
             pb.removeBody(obj_id)
         Avg_result = np.sum(interm_result) / len(interm_result)
-        
+
         mutants = obj.Multiple_MutateObject()
         Mutant_G1_result = []
         for mut in mutants:
@@ -784,7 +784,7 @@ if __name__ == "__main__":
             for i in range(len(rest_coords)):  # choosing all candidates
                 if i > 0:  # respawn object after an attempt.
                     exp.reset_robot()
-                    obj_id = exp.Spawn_Object(obj)
+                    obj_id = exp.Spawn_Object(mut)
                     orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
                     exp.env.settle(exp.env.get_position(), seconds=2)
                     rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
@@ -832,7 +832,8 @@ if __name__ == "__main__":
             for parent in NewParents:
                 p_mutants = parent.Multiple_MutateObject()
                 mutants = mutants+p_mutants
-                mutant_avg =0
+                mutant_avg =[]
+                mutant_avg.clear()
                 mutant_error = []
                 for child in p_mutants:
                     obj_id = exp.Spawn_Object(child)
@@ -854,7 +855,7 @@ if __name__ == "__main__":
 
                         if j > 0:  # respawn object after an attempt.
                             exp.reset_robot()
-                            obj_id = exp.Spawn_Object(obj)
+                            obj_id = exp.Spawn_Object(child)
                             orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
                             exp.env.settle(exp.env.get_position(), seconds=2)
                             rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
@@ -871,6 +872,7 @@ if __name__ == "__main__":
 
                         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
                         mutant_error.append((picked_pos[2] - rest_pos[2]))
+                        pb.removeBody(obj_id)
                     mutant_avg.append(np.sum(mutant_error)/len(mutant_error))
                 g_result.append(mutant_avg)
             Generation_results.append(g_result)
