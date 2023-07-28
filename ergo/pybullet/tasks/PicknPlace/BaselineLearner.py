@@ -713,7 +713,7 @@ if __name__ == "__main__":
         interm_result = []
         #pb.removeBody(obj_id)
         Avg_result = 0
-        for i in range(len(rest_coords)): # choosing all candidates
+        for i in range(len(rest_coords)-1): # choosing all candidates
             if i > 0: # respawn object after an attempt.
                 exp.reset_robot()
                 obj_id = exp.Spawn_Object(obj)
@@ -781,7 +781,7 @@ if __name__ == "__main__":
             # (heuristic to avoid object-gripper collision in top-down grasps)
             hi = rest_coords.mean(axis=1)[:, 2].argmax()
             G1_interm_result = []
-            for i in range(len(rest_coords)):  # choosing all candidates
+            for i in range(len(rest_coords)-1):  # choosing all candidates
                 if i > 0:  # respawn object after an attempt.
                     exp.reset_robot()
                     obj_id = exp.Spawn_Object(mut)
@@ -851,7 +851,7 @@ if __name__ == "__main__":
                     M = np.array(M).reshape(3, 3)
                     rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
                     OneMutant_result = []
-                    for j in range(len(rest_coords)):
+                    for j in range(len(rest_coords) -1):
 
                         if j > 0:  # respawn object after an attempt.
                             exp.reset_robot()
