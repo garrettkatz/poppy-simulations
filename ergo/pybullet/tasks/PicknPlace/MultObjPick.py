@@ -195,6 +195,8 @@ class Obj:
             self.voxels[pos] = 1
         return self
 
+    def crossover(self,obj1,obj2):
+        return 0
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])

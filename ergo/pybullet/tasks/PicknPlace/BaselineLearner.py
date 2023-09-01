@@ -648,12 +648,9 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
 
 
 import pickle
-
-if __name__ == "__main__":
-
-    import MultObjPick
-    import pybullet as pb
-
+import MultObjPick
+import pybullet as pb
+def BigTest():
     grasp_width = 1  # distance between grippers in voxel units
     voxel_size = 0.03  # dimension of each voxel
     table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
@@ -879,7 +876,98 @@ if __name__ == "__main__":
             Top4Index = sorted(range(len(g_result)), key=lambda i: g_result[i], reverse=True)[-4:]
         with open('Generational_results.pickle','wb') as handle:
             pickle.dump(Generation_results,handle,protocol=pickle.HIGHEST_PROTOCOL)
-import pickle
+
+
+def AttemptGrips(obj):
+    import MultObjPick
+    import pybullet as pb
+
+    grasp_width = 1  # distance between grippers in voxel units
+    voxel_size = 0.03  # dimension of each voxel
+    table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
+    learner = BaselineLearner(grasp_width, voxel_size)
+    Num_success = 0
+    Num_Grips_attempted = 0
+    Result = []
+    num_objects = 1
+
+    exp = MultObjPick.experiment()
+    exp.CreateScene()
+    env = exp.env
+
+    pb.resetDebugVisualizerCamera(
+        cameraDistance=1.4,
+        cameraYaw=-1.2,
+        cameraPitch=-39.0,
+        cameraTargetPosition=(0., 0., 0.),
+    )
+    obj_id = exp.Spawn_Object(obj)
+    # Mutant = obj.MutateObject()
+    voxels, voxel_corner = learner.object_to_voxels(obj)
+    # get candidate grasp points
+    cands = learner.collect_grasp_candidates(voxels)
+    # convert back to simulator units
+    coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+    # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
+    orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+    exp.env.settle(exp.env.get_position(), seconds=3)
+    rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+    # abort if object fell off of table
+    if rest_pos[2] < table_height:
+        pb.removeBody(obj_id)
+        exp.env.close()
+        return
+    # sys.exit(0)
+    M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+    M = np.array(M).reshape(3, 3)
+    rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+    interm_result = []
+    for i in range(len(rest_coords) - 1):  # choosing all candidates
+        if i > 0:  # respawn object after an attempt.
+            exp.reset_robot()
+            obj_id = exp.Spawn_Object(obj)
+            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+            exp.env.settle(exp.env.get_position(), seconds=2)
+            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+            # abort if object fell off of table
+            if rest_pos[2] < table_height:
+                pb.removeBody(obj_id)
+                continue
+            # sys.exit(0)
+
+            # transform grasp coordinates to object pose
+            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+            M = np.array(M).reshape(3, 3)
+            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+        grip_points = rest_coords[i]
+        trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+        # try best trajectory
+        for angles in trajectory:
+            exp.env.goto_position(angles, duration=2)
+            exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
+            # input('.')
+        picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+
+
+if __name__ == "__main__":
+    import multiprocessing as mp
+
+    voxel_size = 0.03  # dimension of each voxel
+    num_prll_prcs = 5
+    dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
+    n_parts = 6
+    rgb = [(.75, .25, .25)] * n_parts
+    obj = MultObjPick.Obj(dims, n_parts, rgb)
+    obj.GenerateObject(dims, n_parts, [0, 0, 0])
+    #obj_id = exp.Spawn_Object(obj)
+    # Mutant = obj.MutateObject()
+
+    AttemptGrips(obj)
+
+    print()
 
 
 #pickle to load/save graphs
