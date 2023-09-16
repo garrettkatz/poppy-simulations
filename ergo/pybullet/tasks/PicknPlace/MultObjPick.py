@@ -195,8 +195,21 @@ class Obj:
             self.voxels[pos] = 1
         return self
 
-    def crossover(self,obj1,obj2):
-        return 0
+    def crossover(self,obj1,obj2,npartsA):
+
+        ChildObj = Obj(obj1.extents,obj1.NoOfParts,obj1.rgb)
+        ChildObj.isMutant =True
+        ChildObj.ParentId = obj1.ObjId.copy()
+        dummy_obj2pos = obj2.positions.copy()
+        childpos = obj1.positions.copy()
+        displacement = obj2.positions[npartsA]
+
+        for i in range(npartsA,len(obj2.positions)):
+            dummy_obj2pos[i] = dummy_obj2pos - displacement + childpos[npartsA]
+
+        ChildObj.positions = childpos
+
+        return ChildObj
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
