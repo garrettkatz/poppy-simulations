@@ -199,17 +199,34 @@ class Obj:
 
         ChildObj = Obj(obj1.extents,obj1.NoOfParts,obj1.rgb)
         ChildObj.isMutant =True
-        ChildObj.ParentId = obj1.ObjId.copy()
+        ChildObj.ParentId = obj1.ObjId
         dummy_obj2pos = obj2.positions.copy()
-        childpos = obj1.positions.copy()
-        displacement = obj2.positions[npartsA]
+        childpos = list()
+        for i in range(len(obj1.positions)):
+            if i <= npartsA:
+                childpos.append(obj1.positions[i].copy())
+            else:
+                temp_pos_list = list()
+                x=obj2.positions[i][0] - obj2.positions[npartsA][0] + childpos[npartsA][0]
+                y=obj2.positions[i][1] - obj2.positions[npartsA][1] + childpos[npartsA][1]
+                z=obj2.positions[i][2] - obj2.positions[npartsA][2] + childpos[npartsA][2]
+                temp_pos_list.append(x)
+                temp_pos_list.append(y)
+                temp_pos_list.append(z)
 
-        for i in range(npartsA,len(obj2.positions)):
-            dummy_obj2pos[i] = dummy_obj2pos - displacement + childpos[npartsA]
+                childpos.append(temp_pos_list.copy())
+                temp_pos_list.clear()
 
         ChildObj.positions = childpos
-
         return ChildObj
+        #displacement = obj2.positions[npartsA]
+
+        #for i in range(npartsA,len(obj2.positions)):
+        #    dummy_obj2pos[i] = dummy_obj2pos - displacement + childpos[npartsA]
+
+        #ChildObj.positions = childpos
+
+        #return ChildObj
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])

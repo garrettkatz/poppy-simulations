@@ -5,7 +5,7 @@
 # pt.show()
 import MultObjPick
 import pybullet as pb
-import BaselineLearner
+from BaselineLearner import BaselineLearner
 from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
 import numpy as np
 
@@ -32,6 +32,11 @@ n_parts = 6
 rgb = [(.75, .25, .25)] * n_parts
 obj = MultObjPick.Obj(dims, n_parts, rgb)
 obj.GenerateObject(dims, n_parts, [0, 0, 0])
+
+obj2 = MultObjPick.Obj(dims, n_parts, rgb)
+obj2.GenerateObject(dims, n_parts, [0, 0, 0])
+
+Child = obj2.crossover(obj,obj2,3)
 obj_id = exp.Spawn_Object(obj)
 dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
 n_parts = 6
