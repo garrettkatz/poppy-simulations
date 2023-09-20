@@ -922,7 +922,8 @@ def AttemptGrips(obj):
     M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
     M = np.array(M).reshape(3, 3)
     rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
-    interm_result = []
+    #interm_result = []
+    res = []
     for i in range(len(rest_coords) - 1):  # choosing all candidates
         if i > 0:  # respawn object after an attempt.
             exp.reset_robot()
@@ -950,6 +951,9 @@ def AttemptGrips(obj):
             exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
             # input('.')
         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+        res.append((picked_pos[2] - rest_pos[2]))
+    pb.disconnect()
+    return res
 
 
 if __name__ == "__main__":
@@ -958,15 +962,18 @@ if __name__ == "__main__":
     voxel_size = 0.03  # dimension of each voxel
     num_prll_prcs = 5
     dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
-    n_parts = 6
+    n_parts = 10
     rgb = [(.75, .25, .25)] * n_parts
     obj = MultObjPick.Obj(dims, n_parts, rgb)
     obj.GenerateObject(dims, n_parts, [0, 0, 0])
     #obj_id = exp.Spawn_Object(obj)
     # Mutant = obj.MutateObject()
+    Gen0_obj1_res = AttemptGrips(obj)
 
-    AttemptGrips(obj)
-
+    obj2 = MultObjPick.obj(dims,n_parts,rgb)
+    obj2.GenerateObject(dims,n_parts,[0,0,0])
+    Gen0_obj2_res = AttemptGrips(obj2)
+    gen0_results = []
     print()
 
 

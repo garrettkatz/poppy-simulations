@@ -37,24 +37,4 @@ obj2 = MultObjPick.Obj(dims, n_parts, rgb)
 obj2.GenerateObject(dims, n_parts, [0, 0, 0])
 
 Child = obj2.crossover(obj,obj2,3)
-obj_id = exp.Spawn_Object(obj)
-dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
-n_parts = 6
-rgb = [(.75, .25, .25)] * n_parts
-obj = MultObjPick.Obj(dims, n_parts, rgb)
-obj.GenerateObject(dims, n_parts, [0, 0, 0])
-obj_id = exp.Spawn_Object(obj)
-
-        # get voxel grid for object
-voxels, voxel_corner = learner.object_to_voxels(obj)
-
-        # get candidate grasp points
-cands = learner.collect_grasp_candidates(voxels)
-
-        # convert back to simulator units
-coords = learner.voxel_to_sim_coords(cands, voxel_corner)
-
-        # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
-orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-exp.env.settle(exp.env.get_position(), seconds=3)
-rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+obj_id = exp.Spawn_Object(Child)
