@@ -195,38 +195,6 @@ class Obj:
             self.voxels[pos] = 1
         return self
 
-    def crossover(self,obj1,obj2,npartsA):
-
-        ChildObj = Obj(obj1.extents,obj1.NoOfParts,obj1.rgb)
-        ChildObj.isMutant =True
-        ChildObj.ParentId = obj1.ObjId
-        dummy_obj2pos = obj2.positions.copy()
-        childpos = list()
-        for i in range(len(obj1.positions)):
-            if i <= npartsA:
-                childpos.append(obj1.positions[i].copy())
-            else:
-                temp_pos_list = list()
-                x=obj2.positions[i][0] - obj2.positions[npartsA][0] + childpos[npartsA][0]
-                y=obj2.positions[i][1] - obj2.positions[npartsA][1] + childpos[npartsA][1]
-                z=obj2.positions[i][2] - obj2.positions[npartsA][2] + childpos[npartsA][2]
-                temp_pos_list.append(x)
-                temp_pos_list.append(y)
-                temp_pos_list.append(z)
-
-                childpos.append(temp_pos_list.copy())
-                temp_pos_list.clear()
-
-        ChildObj.positions = childpos
-        return ChildObj
-        #displacement = obj2.positions[npartsA]
-
-        #for i in range(npartsA,len(obj2.positions)):
-        #    dummy_obj2pos[i] = dummy_obj2pos - displacement + childpos[npartsA]
-
-        #ChildObj.positions = childpos
-
-        #return ChildObj
     def MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
@@ -265,6 +233,32 @@ class Obj:
         Boxes = list(zip(map(tuple, self.positions), self.extents, self.rgb))
         ObjInfo = add_box_compound(Boxes)
         return ObjInfo
+
+    def crossover(self, obj1, obj2, npartsA):
+
+        ChildObj = Obj(obj1.extents, obj1.NoOfParts, obj1.rgb)
+        ChildObj.isMutant = True
+        ChildObj.ParentId = obj1.ObjId
+        ChildObj.dim = obj1.dim.copy()
+        dummy_obj2pos = obj2.positions.copy()
+        childpos = list()
+        for i in range(len(obj1.positions)):
+            if i <= npartsA:
+                childpos.append(obj1.positions[i].copy())
+            else:
+                temp_pos_list = list()
+                x = obj2.positions[i][0] - obj2.positions[npartsA][0] + childpos[npartsA][0]
+                y = obj2.positions[i][1] - obj2.positions[npartsA][1] + childpos[npartsA][1]
+                z = obj2.positions[i][2] - obj2.positions[npartsA][2] + childpos[npartsA][2]
+                temp_pos_list.append(x)
+                temp_pos_list.append(y)
+                temp_pos_list.append(z)
+
+                childpos.append(temp_pos_list.copy())
+                temp_pos_list.clear()
+
+        ChildObj.positions = childpos
+        return ChildObj
 
     def GetOpenPosition(self):
         positions = self.positions.copy()
@@ -317,8 +311,8 @@ class experiment:
         ObjInfo = add_box_compound(Boxes)
         a=self.t_pos[0]
         b=self.t_pos[1] + self.t_ext[1] / 2
-        c=self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz
-        b_position = (self.t_pos[0], self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz)
+        c=self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz -0.001
+        b_position = (self.t_pos[0] +0.02, self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz +0.005)
         pb.resetBasePositionAndOrientation(ObjInfo, b_position, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
         obj.basePosition = b_position
         obj.ObjId = ObjInfo
@@ -469,6 +463,6 @@ sys.path.append(os.path.join('..', '..', 'envs'))
 # import matplotlib.pyplot as plt
 #
 # plt.scatter(Error_count,Error)
-# plt.show()
+# plt.show()self
 #
 # input("..")

@@ -452,7 +452,7 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
         # (heuristic to avoid object-gripper collision in top-down grasps)
         hi = rest_coords.mean(axis=1)[:, 2].argmax()
         interm_result = 0
-        for i in range(len(rest_coords)): # choosing all candidates
+        for i in range(len(rest_coords)-1): # choosing all candidates
             if i > 0: # respawn object after an attempt.
                 obj_id = exp.Spawn_Object(obj)
                 orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
@@ -507,7 +507,7 @@ def Experiment2_MultipleRandomObjects_AllCandidateGrips():
 def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
     import MultObjPick
     import pybullet as pb
-
+    attemptCounter = 0
     grasp_width = 1  # distance between grippers in voxel units
     voxel_size = 0.03  # dimension of each voxel
     table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
@@ -586,7 +586,7 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
         Num_Grips_attempted = Num_Grips_attempted + 1
         if picked_pos[2] > rest_pos[2]:
-            print("pick success! -- ", obj_id)
+            print("\nSuccess , Total Attempt number ",Num_Grips_attempted )
             Num_success = Num_success + 1
         Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
         pb.removeBody(obj_id)
@@ -630,7 +630,7 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
             picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
             Num_Grips_attempted = Num_Grips_attempted + 1
             if picked_pos[2] > rest_pos[2]:
-                print("pick success! -- ", obj_id)
+                print("\nSuccess , Total Attempt number ",Num_Grips_attempted )
                 Num_success = Num_success + 1
             Obj_result.append((picked_pos[2] - rest_pos[2]) * 10)
             pb.removeBody(obj_id)
@@ -647,14 +647,119 @@ def Experiment3_AdversarialBaseline_oneObjectMutant_OneGrip():
     plt.show()
 
 
-import pickle
-import MultObjPick
-import pybullet as pb
+def AttemptGrips(obj,gen):
+    import MultObjPick
+    import pybullet as pb
+
+    grasp_width = 1  # distance between grippers in voxel units
+    voxel_size = 0.015  # dimension of each voxel
+    table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
+    learner = BaselineLearner(grasp_width, voxel_size)
+    Num_success = 0
+    Num_Grips_attempted = 0
+    Result = []
+    num_objects = 1
+
+    exp = MultObjPick.experiment()
+    exp.CreateScene()
+    env = exp.env
+
+    pb.resetDebugVisualizerCamera(
+        cameraDistance=1.4,
+        cameraYaw=-1.2,
+        cameraPitch=-39.0,
+        cameraTargetPosition=(0., 0., 0.),
+    )
+    obj_id = exp.Spawn_Object(obj)
+    # Mutant = obj.MutateObject()
+    voxels, voxel_corner = learner.object_to_voxels(obj)
+    # get candidate grasp points
+    cands = learner.collect_grasp_candidates(voxels)
+    # convert back to simulator units
+    coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+    # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
+    orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+    exp.env.settle(exp.env.get_position(), seconds=3)
+    rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+    # abort if object fell off of table
+    if rest_pos[2] < table_height:
+        pb.removeBody(obj_id)
+        exp.env.close()
+        return 0,-1
+    # sys.exit(0)
+    M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+    M = np.array(M).reshape(3, 3)
+    rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+    #interm_result = []
+    res = []
+    num_grips_success = 0
+
+    for i in range(len(rest_coords) - 1):  # choosing all candidates
+        if i > 0:  # respawn object after an attempt.
+            exp.reset_robot()
+            obj_id = exp.Spawn_Object(obj)
+            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+            exp.env.settle(exp.env.get_position(), seconds=3)
+            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+
+            # abort if object fell off of table
+            if rest_pos[2] < table_height:
+                pb.removeBody(obj_id)
+                continue
+            # sys.exit(0)
+
+            # transform grasp coordinates to object pose
+            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+            M = np.array(M).reshape(3, 3)
+            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+        grip_points = rest_coords[i]
+        trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+        # try best trajectory
+        for i in range(len(trajectory)):
+            #trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+            exp.env.goto_position(trajectory[i], duration=2)
+            exp.env.goto_position(trajectory[i], duration=.1)  # in case it needs a little more time to converge
+            #trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+            # input('.')
+        picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
+        height = (picked_pos[2] - rest_pos[2])
+        if ((picked_pos[2]-rest_pos[2])>0.014):
+            num_grips_success = num_grips_success+1
+            print("S")
+        elif ((picked_pos[2]-rest_pos[2])<=0.14):
+            height = 0
+            print("F")
+        res.append(height)
+        pb.removeBody(obj_id)
+    max_res = max(res)
+    avg_res = (sum(res)/len(res))*10
+    #pb.disconnect()
+    env.close()
+    if num_grips_success>0 and gen==0:
+        print("dumping to file , good obj")
+        with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
+            pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        handle.close()
+    if gen>0:
+        print("dumping to file")
+        with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
+            pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        handle.close()
+    return max_res , num_grips_success
+
 def BigTest():
+
+    import MultObjPick
+    import pybullet as pb
+
     grasp_width = 1  # distance between grippers in voxel units
     voxel_size = 0.03  # dimension of each voxel
     table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
-
+    obj_result = []
     learner = BaselineLearner(grasp_width, voxel_size)
     Num_success = 0
     Num_Grips_attempted = 0
@@ -676,7 +781,7 @@ def BigTest():
         # better view of tabletop
 
         dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
-        n_parts = 6
+        n_parts = 20
         rgb = [(.75, .25, .25)] * n_parts
         obj = MultObjPick.Obj(dims, n_parts, rgb)
         obj.GenerateObject(dims, n_parts, [0, 0, 0])
@@ -712,6 +817,7 @@ def BigTest():
         Avg_result = 0
         for i in range(len(rest_coords)-1): # choosing all candidates
             if i > 0: # respawn object after an attempt.
+                #exp.env.reset()
                 exp.reset_robot()
                 obj_id = exp.Spawn_Object(obj)
                 orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
@@ -739,13 +845,14 @@ def BigTest():
             picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
             Num_Grips_attempted = Num_Grips_attempted + 1
             if picked_pos[2] > rest_pos[2]:
-                print("pick success! -- ", obj_id)
+                print("\nSuccess , Total Attempt number ",Num_Grips_attempted )
                 Num_success = Num_success + 1
             interm_result .append(picked_pos[2] - rest_pos[2])
             pb.removeBody(obj_id)
         Avg_result = np.sum(interm_result) / len(interm_result)
-
+        obj_result.append(Avg_result)
         mutants = obj.Multiple_MutateObject()
+        mutants = np.random.choice(mutants,15)
         Mutant_G1_result = []
         for mut in mutants:
             # obj = MultObjPick.Obj(mut.dims, n_parts, rgb)
@@ -763,7 +870,7 @@ def BigTest():
             rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
             if rest_pos[2] < table_height:  # object falls/tumbles off , ignore this case
                 pb.removeBody(obj_id)
-                exp.env.close()
+                #exp.env.close()
                 continue
                 # transform grasp coordinates to object pose
                 # transform grasp coordinates to object pose
@@ -807,31 +914,35 @@ def BigTest():
                 picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
                 Num_Grips_attempted = Num_Grips_attempted + 1
                 if picked_pos[2] > rest_pos[2]:
-                    print("pick success! -- ", obj_id)
+                    print("\nSuccess , Total Attempt number ",Num_Grips_attempted )
                     Num_success = Num_success + 1
                 G1_interm_result.append((picked_pos[2] - rest_pos[2]))
                 pb.removeBody(obj_id)
             Avg_result = np.sum(G1_interm_result) / len(G1_interm_result)
+            G1_interm_result.clear()
             Mutant_G1_result.append(Avg_result)
-        with open('Gen1_results.pickle','wb') as handle:
+        with open(f'Gen1_results.pickle','ab+') as handle:
             pickle.dump(Mutant_G1_result,handle,protocol=pickle.HIGHEST_PROTOCOL)
-        Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-4:]
+        handle.close()
+        Top4Index = sorted(range(len(Mutant_G1_result)), key=lambda i: Mutant_G1_result[i], reverse=True)[-1:]
         # Best Mutant candidates for next generation / Least grippable objects
         Overall_Mutants_result = []
-        num_generations =10
+        num_generations =15
         Generation_results =[]
         for i in range(num_generations):
             Mutant_newgen_result = []
+            #Top4Index_RC = np.random.choice(Top4Index,1)
             NewParents = [mutants[j] for j in Top4Index]
-            mutants.clear()
+            mutants.tolist().clear()
             g_result = []
             g_result.clear()
             for parent in NewParents:
                 p_mutants = parent.Multiple_MutateObject()
-                mutants = mutants+p_mutants
+                #mutants = mutants+p_mutants
                 mutant_avg =[]
                 mutant_avg.clear()
                 mutant_error = []
+                p_mutants = np.random.choice(p_mutants,10)
                 for child in p_mutants:
                     obj_id = exp.Spawn_Object(child)
                     voxels, voxel_corner = learner.object_to_voxels(child)
@@ -842,13 +953,13 @@ def BigTest():
                     rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
                     if rest_pos[2] < table_height:  # object falls/tumbles off , ignore this case
                         pb.removeBody(obj_id)
-                        exp.env.close()
+                        #exp.env.close()
                         continue
                     M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
                     M = np.array(M).reshape(3, 3)
                     rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
                     OneMutant_result = []
-                    for j in range(len(rest_coords) -1):
+                    for j in range(len(rest_coords)-1):
 
                         if j > 0:  # respawn object after an attempt.
                             exp.reset_robot()
@@ -861,7 +972,7 @@ def BigTest():
                             if rest_pos[2] < table_height:
                                 pb.removeBody(obj_id)
                                 continue
-                        grip_points = rest_coords[i]
+                        grip_points = rest_coords[j]
                         trajectory = learner.get_pick_trajectory(exp.env, grip_points)
                         for angles in trajectory:
                             exp.env.goto_position(angles, duration=2)
@@ -870,111 +981,120 @@ def BigTest():
                         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
                         mutant_error.append((picked_pos[2] - rest_pos[2]))
                         pb.removeBody(obj_id)
-                    mutant_avg.append(np.sum(mutant_error)/len(mutant_error))
+                    mutant_avg.append(np.min(mutant_error))
                 g_result.append(mutant_avg)
+
             Generation_results.append(g_result)
-            Top4Index = sorted(range(len(g_result)), key=lambda i: g_result[i], reverse=True)[-4:]
-        with open('Generational_results.pickle','wb') as handle:
-            pickle.dump(Generation_results,handle,protocol=pickle.HIGHEST_PROTOCOL)
-
-
-def AttemptGrips(obj):
-    import MultObjPick
-    import pybullet as pb
-
-    grasp_width = 1  # distance between grippers in voxel units
-    voxel_size = 0.03  # dimension of each voxel
-    table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
-    learner = BaselineLearner(grasp_width, voxel_size)
-    Num_success = 0
-    Num_Grips_attempted = 0
-    Result = []
-    num_objects = 1
-
-    exp = MultObjPick.experiment()
-    exp.CreateScene()
-    env = exp.env
-
-    pb.resetDebugVisualizerCamera(
-        cameraDistance=1.4,
-        cameraYaw=-1.2,
-        cameraPitch=-39.0,
-        cameraTargetPosition=(0., 0., 0.),
-    )
-    obj_id = exp.Spawn_Object(obj)
-    # Mutant = obj.MutateObject()
-    voxels, voxel_corner = learner.object_to_voxels(obj)
-    # get candidate grasp points
-    cands = learner.collect_grasp_candidates(voxels)
-    # convert back to simulator units
-    coords = learner.voxel_to_sim_coords(cands, voxel_corner)
-    # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
-    orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-    exp.env.settle(exp.env.get_position(), seconds=3)
-    rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
-
-    # abort if object fell off of table
-    if rest_pos[2] < table_height:
-        pb.removeBody(obj_id)
+            Top4Index = sorted(range(len(g_result)), key=lambda i: g_result[i], reverse=True)[-1:]
+            with open(f'Generational_{i}_results.pickle','ab+') as handle:
+                pickle.dump(Generation_results,handle,protocol=pickle.HIGHEST_PROTOCOL)
+            handle.close()
         exp.env.close()
-        return
-    # sys.exit(0)
-    M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
-    M = np.array(M).reshape(3, 3)
-    rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
-    #interm_result = []
-    res = []
-    for i in range(len(rest_coords) - 1):  # choosing all candidates
-        if i > 0:  # respawn object after an attempt.
-            exp.reset_robot()
-            obj_id = exp.Spawn_Object(obj)
-            orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-            exp.env.settle(exp.env.get_position(), seconds=2)
-            rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
+    with open('Obj.pickle', 'ab+') as handle:
+        pickle.dump(obj_result, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
 
-            # abort if object fell off of table
-            if rest_pos[2] < table_height:
-                pb.removeBody(obj_id)
-                continue
-            # sys.exit(0)
 
-            # transform grasp coordinates to object pose
-            M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
-            M = np.array(M).reshape(3, 3)
-            rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
-        grip_points = rest_coords[i]
-        trajectory = learner.get_pick_trajectory(exp.env, grip_points)
-
-        # try best trajectory
-        for angles in trajectory:
-            exp.env.goto_position(angles, duration=2)
-            exp.env.goto_position(angles, duration=.1)  # in case it needs a little more time to converge
-            # input('.')
-        picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
-        res.append((picked_pos[2] - rest_pos[2]))
-    pb.disconnect()
-    return res
-
+import pickle
 
 if __name__ == "__main__":
     import multiprocessing as mp
+    import MultObjPick
+    #import pybullet as pb
 
-    voxel_size = 0.03  # dimension of each voxel
+    voxel_size = 0.015  # dimension of each voxel
     num_prll_prcs = 5
     dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
-    n_parts = 10
+    n_parts = 8
     rgb = [(.75, .25, .25)] * n_parts
+    gen0_results = []
     obj = MultObjPick.Obj(dims, n_parts, rgb)
     obj.GenerateObject(dims, n_parts, [0, 0, 0])
-    #obj_id = exp.Spawn_Object(obj)
+    # obj_id = exp.Spawn_Object(obj)
     # Mutant = obj.MutateObject()
-    Gen0_obj1_res = AttemptGrips(obj)
+    Gen0_obj1_res , num_grips = AttemptGrips(obj,0)
 
-    obj2 = MultObjPick.obj(dims,n_parts,rgb)
-    obj2.GenerateObject(dims,n_parts,[0,0,0])
-    Gen0_obj2_res = AttemptGrips(obj2)
-    gen0_results = []
-    print()
+    gen0_results.append(Gen0_obj1_res)
+    while Gen0_obj1_res<=0:
+        print("Redo obj1 , fell off the table or bad object")
+        obj = MultObjPick.Obj(dims, n_parts, rgb)
+        obj.GenerateObject(dims, n_parts, [0, 0, 0])
+        Gen0_obj1_res, num_grips2 = AttemptGrips(obj, 0)
+    print("Completed gen 0 original Parent1")
 
+    obj2 = MultObjPick.Obj(dims, n_parts, rgb)
+    obj2.GenerateObject(dims, n_parts, [0, 0, 0])
+
+    Gen0_obj2_res , num_grips2 = AttemptGrips(obj2,0)
+    while Gen0_obj2_res<=0:
+        print("Redo obj2 , fell off the table or bad object")
+        obj2 = MultObjPick.Obj(dims, n_parts, rgb)
+        obj2.GenerateObject(dims, n_parts, [0, 0, 0])
+        Gen0_obj2_res, num_grips2 = AttemptGrips(obj2, 0)
+
+    print("Completed gen 0 original Parent2")
+    gen0_results.append(Gen0_obj2_res)
+    numgrip = []
+    numgrip.append(num_grips)
+    numgrip.append(num_grips2)
+    with open(f'mutantGen_0_results.pickle', 'ab+') as handle:
+        pickle.dump(gen0_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+    with open(f'mutant_Gen0_numgrip_results.pickle', 'ab+') as handle:
+        pickle.dump(numgrip, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+    print("\n Completed Gen0")
+    num_gen = 30
+    mutantres = []
+    grip_per_gen = []
+    for i in range(1,num_gen):
+        grip_gen = 0
+        print("\n Working on Gen",i)
+        mutantres.clear()
+        child = obj.crossover(obj,obj2,int(n_parts/2))
+        mutants = child.Multiple_MutateObject()
+        mutant_sample = np.random.choice(mutants,20)
+        mutant_sample=np.append(mutant_sample,obj)
+        mutant_sample=np.append(mutant_sample, obj2)
+        print("\n Choose 20 random mutants - Completed")
+        grips_res = []
+        grips_res.clear()
+        for child in mutant_sample:
+            m_res,succ_grips = AttemptGrips(child,i)
+            print("\nC")
+            if m_res != -1:
+                grip_per_gen.append(succ_grips)
+
+                mutantres.append(m_res)
+        if len(mutantres) == 0:
+            temp = obj.copy()
+            obj = obj2.copy()
+            obj2 = temp.copy()
+            continue
+        with open(f'mutantGen_{i}_results.pickle', 'ab+') as handle:
+            pickle.dump(mutantres, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        handle.close()
+        with open(f'mutantGen_{i}_numgrips_results.pickle', 'ab+') as handle:
+            pickle.dump(grip_per_gen, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        handle.close()
+        grips_res.append(grip_per_gen)
+        Parents_Index= sorted(range(len(mutantres)), key=lambda i: mutantres[i], reverse=True)[-2:]
+        obj = mutant_sample[Parents_Index[0]]
+        obj2 = mutant_sample[Parents_Index[1]]
+        parentlist = list()
+        parentlist.clear()
+        parentlist.append(obj)
+        parentlist.append(obj2)
+        with open(f'mutantGenParent_{i}_results.pickle', 'ab+') as handle:
+            pickle.dump(mutantres, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        handle.close()
+
+
+        parentlist.clear()
+    with open(f'mutantGen_numgrips_gen_results.pickle', 'ab+') as handle:
+        pickle.dump(grips_res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    handle.close()
+
+print()
 
 #pickle to load/save graphs
