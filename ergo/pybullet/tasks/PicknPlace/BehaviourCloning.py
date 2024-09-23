@@ -60,7 +60,7 @@ def flatten(xss):
 import itertools
 import matplotlib.pyplot as plt
 
-Network =Model_2()
+Network =Model_1()
 import torch.optim as optim
 from operator import add
 Obj_pos_abs = []
@@ -102,9 +102,12 @@ if __name__ == "__main__":
             Input = list(itertools.chain(Grip_pos, a_vox_p, r_vox_p))
             print("data ready for this epoch")
             Input_t = torch.Tensor(Input)
-            Output = Network(torch.tensor(a_vox_p),torch.tensor(r_vox_p),torch.tensor(Grip_pos))
+            Output = Network(Input_t)
             Target = torch.Tensor(flatten(Traj))
             loss = criterion(Output,Target)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
             print(loss)
             LossList.append(loss)
 
