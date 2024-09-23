@@ -65,7 +65,7 @@ import torch.optim as optim
 from operator import add
 Obj_pos_abs = []
 criterion= nn.MSELoss()
-optimizer =optim.Adam(Network.parameters(),lr=0.001)
+optimizer =optim.Adam(Network.parameters(),lr=0.005)
 
 if __name__ == "__main__":
     f = open(f'Bh_dataset_1_graspPoint.pickle', 'rb')
@@ -106,13 +106,13 @@ if __name__ == "__main__":
             Target = torch.Tensor(flatten(Traj))
             loss = criterion(Output,Target)
             optimizer.zero_grad()
-            loss.backward()
+            loss.backward(retain_graph=True)
             optimizer.step()
             print(loss)
             LossList.append(loss)
 
-            Network.zero_grad()
-            loss.backward()
+           # Network.zero_grad()
+            #loss.backward()
 
     print("done")
 
