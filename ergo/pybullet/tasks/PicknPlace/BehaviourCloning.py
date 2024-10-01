@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -31,9 +33,12 @@ class Model_1(nn.Module):
 
     def forward(self,x):
         l1 = self.lin1(x)
-        l2 = self.relu(self.lin2(l1))
-        out = self.fc(l2)
-        return out
+        l2 = self.lin2(self.relu(l1))
+        out = self.fc(self.relu(l2))
+        out1 = self.sig(out)
+        out2 = out1*(2*math.pi)
+        out3 = out2.reshape(4,42)
+        return out3
 
 class Model_2(nn.Module):
     def __init__(self):
@@ -65,22 +70,22 @@ import torch.optim as optim
 from operator import add
 Obj_pos_abs = []
 criterion= nn.MSELoss()
-optimizer =optim.Adam(Network.parameters(),lr=0.005)
+optimizer =optim.Adam(Network.parameters(),lr=0.00001)
 
 if __name__ == "__main__":
-    f = open(f'Bh_dataset_1_graspPoint.pickle', 'rb')
+    f = open(f'BH\Bh_dataset_1_graspPoint.pickle', 'rb')
     data1 = pickle.load(f)
     f.close()
 
-    f = open(f'Bh_dataset_1_OBJ_voxels.pickle', 'rb')
+    f = open(f'BH\Bh_dataset_1_OBJ_voxels.pickle', 'rb')
     data2 = pickle.load(f)
     f.close()
 
-    f = open(f'Bh_dataset_1_objdetails.pickle', 'rb')
+    f = open(f'BH\Bh_dataset_1_objdetails.pickle', 'rb')
     data3 = pickle.load(f)
     f.close()
 
-    f = open(f'Bh_dataset_1_Trajectory.pickle', 'rb')
+    f = open(f'BH\Bh_dataset_1_Trajectory.pickle', 'rb')
     data4 = pickle.load(f)
     f.close()
     LossList = []
@@ -103,10 +108,10 @@ if __name__ == "__main__":
             print("data ready for this epoch")
             Input_t = torch.Tensor(Input)
             Output = Network(Input_t)
-            Target = torch.Tensor(flatten(Traj))
+            Target = torch.Tensor((Traj))
             loss = criterion(Output,Target)
             optimizer.zero_grad()
-            loss.backward(retain_graph=True)
+            loss.backward()
             optimizer.step()
             print(loss)
             LossList.append(loss)
