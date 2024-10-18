@@ -89,7 +89,8 @@ if __name__ == "__main__":
     data4 = pickle.load(f)
     f.close()
     LossList = []
-    for i in range(len(data1)):
+    ValLoss = []
+    for i in range(len(data1[0:750])):
         for k in range(len(data1[i])):
             Grip_pos = flatten(data1[i][k])
             Rel_voxel_pos = data2[i][k]
@@ -101,7 +102,7 @@ if __name__ == "__main__":
                 Abs_voxel_pos[j][2] = Abs_voxel_pos[j][2] + Obj_pos_list[2]
 
             r_vox_p = flatten(Rel_voxel_pos)
-            a_vox_p = flatten(Abs_voxel_pos)
+            a_vox_p = flatten(Abs_voxewl_pos)
             Traj = (data4[i][k])
           #  Input = [n for n in (Grip_pos, a_vox_p, r_vox_p)]
             Input = list(itertools.chain(Grip_pos, a_vox_p, r_vox_p))
@@ -113,6 +114,29 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if i%750==749:
+                print("Valiation\n")
+                for m in range(len(data1[750:1000])):
+                    for n in range(len(data1[m])):
+                        Grip_pos_v = flatten(data1[m][n])
+                        Rel_voxel_pos_v = data2[m][n]
+                        Obj_pos_list_v = list(data3[m][n])
+                        Abs_voxel_pos_v = data2[m][n]
+                        for l in range(len(Rel_voxel_pos_v)):
+                            Abs_voxel_pos_v[l][0] = Abs_voxel_pos_v[l][0] + Obj_pos_list_v[0]
+                            Abs_voxel_pos_v[l][1] = Abs_voxel_pos_v[l][1] + Obj_pos_list_v[1]
+                            Abs_voxel_pos_v[l][2] = Abs_voxel_pos_v[l][2] + Obj_pos_list_v[2]
+
+                        r_vox_p_v = flatten(Rel_voxel_pos_v)
+                        a_vox_p_v = flatten(Abs_voxel_pos_v)
+                        Traj_v = (data4[m][n])
+                        Input_v = list(itertools.chain(Grip_pos_v, a_vox_p, r_vox_p))
+                        print("data ready for this epoch")
+                        Input_t_v = torch.Tensor(Input_v)
+                        Output_v = Network(Input_t_v)
+                        Target_v = torch.Tensor((Traj_v))
+                        loss_v = criterion(Output_v, Target_v)
+                        ValLoss.append(loss_v)
             print(loss)
             LossList.append(loss)
 
@@ -121,8 +145,8 @@ if __name__ == "__main__":
 
     print("done")
 
-    x_axis = np.arange(2501)
-    y_axis = LossList
+    x_axis = np.arange(1761)
+    y_axis = ValLoss
     fig, ax = plt.subplots()
     ax.plot(x_axis, y_axis)
     plt.show()
