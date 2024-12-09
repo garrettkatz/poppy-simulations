@@ -103,8 +103,9 @@ optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 memory = ReplayMemory(10000)
 steps_done = 0
 
-def select_action(state):
+def select_action(state,action_space):
     global steps_done
+
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
@@ -116,7 +117,7 @@ def select_action(state):
             # found, so we pick action with the larger expected reward.
             return policy_net(state).max(1).indices.view(1, 1)
     else:
-        return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long
+        return torch.tensor([[action_space.sample()]], device=device, dtype=torch.long)
 
 
 
@@ -257,11 +258,13 @@ if __name__ == "__main__":
 
         action_space = ["Handselection""xplus", "xminus", "yplus", "yminus", "zplus", "zminus", "open", "close"]
         #state is combination of env variables.
-
+        start_angles = env.get_position()
+        state = []
+        state.append(start_angles,rest_pos,rest_orn)
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         for t in count():
-            action = select_action(state)
-            observation, reward, terminated, truncated, _ = env.step(action.item())
+            action = select_action(state,action_space)
+            observation, reward, terminated, truncated, _ = env.step(action)
             reward = rewards(state,observation)
             done = terminated or truncated
             if terminated:
