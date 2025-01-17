@@ -20,7 +20,7 @@ class BaselineLearner:
     Get padded voxel representation of object
     """
     def object_to_voxels(self, obj):
-
+        #self.voxel_size = 0.015
         # get offsets from object base position to voxel centers
         voxel_offsets = np.array(obj.positions)
 
@@ -37,7 +37,7 @@ class BaselineLearner:
         for (i,j,k) in vijk: voxels[i,j,k] = 1
 
         # also get coordinates for lower grid corner corner to convert back later
-        voxel_corner = voxel_offsets.min(axis=0) - voxel_size/2
+        voxel_corner = voxel_offsets.min(axis=0) - self.voxel_size/2
 
         return voxels, voxel_corner
 
