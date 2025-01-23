@@ -163,6 +163,85 @@ class BaselineLearner:
 
         return trajectory
 
+
+    def get_pick_trajectory_variation(self, env, grip_points):
+
+            # choose arm based on x-coordinate of grip points
+            if grip_points.mean(axis=0)[0] > 0:
+                arm, other_arm = "lr"
+            else:
+                arm, other_arm = "rl"
+
+            # links with specified IK targets
+            links = [
+                env.joint_index[f"{arm}_moving_tip"],
+                env.joint_index[f"{arm}_fixed_tip"],
+                env.joint_index[f"{arm}_fixed_knuckle"],  # for top-down approach
+            ]
+
+            # joints that are free for IK
+            free = list(range(env.num_joints))
+            # links with targets are not considered free
+            for idx in links: free.remove(idx)
+            # keep reasonable posture
+            free.remove(env.joint_index["head_z"])  # neck
+            free.remove(0)  # waist
+
+            # get waypoint targets
+            grip_centers = grip_points.mean(axis=0, keepdims=True)
+            open_down = grip_centers + 1.5 * (grip_points - grip_centers)
+            closed_down = grip_centers + 0.9 * (grip_points - grip_centers)
+            closed_up = closed_down + np.array([[0, 0, 0.1]])
+            open_up = open_down + np.array([[0, 0, 0.1]])
+            waypoints = (open_up, open_down, closed_down, closed_up)
+
+            # try each finger at each contact point
+            start_angles = env.get_position()
+            max_error = [0] * 2
+            trajectories = []
+            for i, (fixed, moving) in enumerate(([0, 1], [1, 0])):
+
+                # IK on each waypoint
+                env.set_position(start_angles)
+                angles = {-1: start_angles}
+                for w in range(len(waypoints)):
+
+                    # targets for current assignment of fingers to contact points
+                    targets = waypoints[w][[moving, fixed, fixed], :]
+                    targets[2, 2] += .05  # xyz origin offset of fixed_knuckle in urdf
+
+                    # try to reach
+                    angles[w], out_of_range, error = env.partial_ik(links, targets, angles[w - 1], free, num_iters=3000)
+                    if angles[w][env.joint_index[f"{arm}_gripper"]] < 0.5:
+                        continue
+                    max_error[i] = max(max_error[i], error)
+                    # max_error.append(max(max_error[i], error))
+
+                    # don't change other arm angles
+                    for joint_name in ("shoulder_x", "shoulder_y", "arm_z", "elbow_y"):
+                        idx = env.joint_index[f"{other_arm}_{joint_name}"]
+                        # angles[w][idx] = 0
+                        angles[w][idx] = start_angles[idx]
+
+                    # env.set_position(angles[w])
+                    # print(max_error[i])
+                    # input('..')
+                # angle[w][x] < 0 , continue
+                trajectory = [angles[w] for w in range(len(waypoints))]
+                # if trajectory[len(trajectory) - 1][env.joint_index[f"{arm}_gripper"]] > 0.5:
+                #      continue
+                # if trajectory[len(trajectory) - 1][env.joint_index[f"{other_arm}_gripper"]] > 0.5:
+                #     continue
+                trajectories.append(trajectory)
+                env.set_position(start_angles)
+
+            # choose trajectory with lower max error
+            choice = np.argmin(max_error)
+
+            trajectory = trajectories[choice]
+
+            return trajectory,arm
+
         # # order best (least error) to worst
 
 

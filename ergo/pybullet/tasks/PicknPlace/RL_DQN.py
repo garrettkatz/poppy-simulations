@@ -58,7 +58,7 @@ class Model_1(nn.Module):
         self.relu = nn.LeakyReLU()
         self.tanh = nn.Tanh()
         self.sig = nn.Sigmoid()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self,x):
         l1 = self.lin1(x)
@@ -374,7 +374,19 @@ if __name__ == "__main__":
         # abort if object fell off of table
         if rest_pos[2] < table_height:
             pb.removeBody(obj_id)
-            exp.env.close()
+            continue
+        M = pb.getMatrixFromQuaternion(rest_orn)  # orientation of rest object in world coordinates
+        M = np.array(M).reshape(3, 3)
+        rest_coords = np.dot(coords, M.T) + np.array(rest_pos)
+        grip_point = rest_coords[0]
+        t,arm =  learner.get_pick_trajectory_variation(exp.env, grip_point)
+        for i in range(len(t)-3):
+            #trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
+            exp.env.goto_position(t[i], duration=2)
+            exp.env.goto_position(t[i], duration=.1)  # in case it needs a little more time to converge
+            #trajectory = learner.get_pick_trajectory(exp.env, grip_points)
+
 
 
         #state is combination of env variables.
@@ -395,7 +407,11 @@ if __name__ == "__main__":
             lh_pos = torch.mul(torch.tensor(list(map(add, lft_pos, lmt_pos))), 0.5)
 
             action_select = select_action(state,action_space)
-            action_process = processaction(action_select,lft_pos,lmt_pos,0.001)
+            if arm == "l":
+                action_process = processaction(action_select,lft_pos,lmt_pos,0.001)
+            else:
+                action_process = processaction(action_select,rft_pos,rmt_pos,0.001)
+
             npa = np.asarray(action_process, dtype=np.float32)
             traj = learner.get_pick_trajectory(exp.env,npa)
             action = traj[3]
@@ -404,8 +420,10 @@ if __name__ == "__main__":
             new_angles = env.get_position()
             o_pos, o_orn = pb.getBasePositionAndOrientation(obj_id)
 
-
-            reward = rewards(o_pos, rest_pos)
+            if arm == "l":
+                reward = rewards(o_pos, lh_pos)
+            else:
+                reward = rewards(o_pos, rh_pos)
             #done = terminated or truncated
             observation = np.concatenate((start_angles, o_pos, o_orn), axis=None)
             #if terminated:
