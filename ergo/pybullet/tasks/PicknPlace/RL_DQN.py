@@ -65,7 +65,8 @@ class Model_1(nn.Module):
         l2 = self.lin2(self.relu(l1))
         out = self.fc(self.relu(l2))
         out1 = self.relu(self.fc_to_action_space(out))
-        out2 = self.softmax(out1)
+        out2 = self.softmax(out1) # -1 to +1
+
 ##### sometehing missing here pds
         return out2
 
@@ -158,7 +159,7 @@ def select_action_hands(state):
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
-    eps_threshold = 1
+    #eps_threshold = 1
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
@@ -359,6 +360,8 @@ if __name__ == "__main__":
             cameraPitch=-39.0,
             cameraTargetPosition=(0., 0., 0.),
         )
+
+      #  scaling = ((2*(x-low))/(high-low))-1
         obj_id = exp.Spawn_Object(obj)
         # Mutant = obj.MutateObject()
         voxels, voxel_corner = learner.object_to_voxels(obj)
@@ -366,6 +369,12 @@ if __name__ == "__main__":
         cands = learner.collect_grasp_candidates(voxels)
         # convert back to simulator units
         coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+        check = env.joint_name
+        check_UL = []
+        check_LL = []
+        for i in range(env.num_joints):
+            check_UL.append(pb.getJointInfo(env.robot_id,i)[8])
+            check_LL.append(pb.getJointInfo(env.robot_id,i)[9])
         # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
         orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
         exp.env.settle(exp.env.get_position(), seconds=3)
@@ -395,6 +404,23 @@ if __name__ == "__main__":
         #goto position close to obj ( center of voxel)
        # state.append(start_angles,rest_pos,rest_orn)
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+
+        links = [
+            env.joint_index[f"{arm}_moving_tip"],
+            env.joint_index[f"{arm}_fixed_tip"],
+           # env.joint_index[f"{arm}_fixed_knuckle"], # for top-down approach
+        ]
+
+        # joints that are free for IK
+        free = list(range(env.num_joints))
+        # links with targets are not considered free
+        for idx in links: free.remove(idx)
+        # keep reasonable posture
+        free.remove(env.joint_index["head_z"]) # neck
+        free.remove(0) # waist
+
+
+
    #     state = torch.from_numpy(state)
         timer = 0
         for t in count():
@@ -408,21 +434,41 @@ if __name__ == "__main__":
 
             action_select = select_action(state,action_space)
             if arm == "l":
-                action_process = processaction(action_select,lft_pos,lmt_pos,0.001)
+                action_process = processaction(action_select,lft_pos,lmt_pos,0.01)
             else:
-                action_process = processaction(action_select,rft_pos,rmt_pos,0.001)
+                action_process = processaction(action_select,rft_pos,rmt_pos,0.01)
 
             npa = np.asarray(action_process, dtype=np.float32)
-            traj = learner.get_pick_trajectory(exp.env,npa)
-            action = traj[3]
-            env.step(action)
-            action = torch.from_numpy(action)
+            #traj = learner.get_pick_trajectory(exp.env,npa)
+            #action = traj[3]
+
+            targets = npa
+           # targets[2, 2] += .05
+            all_targets = env.forward_kinematics()
+            all_targets[links] = targets
+            all_links = np.array([j for j in range(env.num_joints) if j not in free])
+            all_targets = all_targets[all_links]
+            angles = env.inverse_kinematics(all_links, all_targets, num_iters=1000)
+            env.step(angles)
+            action = torch.from_numpy(angles)
             new_angles = env.get_position()
             o_pos, o_orn = pb.getBasePositionAndOrientation(obj_id)
 
             if arm == "l":
+                lft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
+                lmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_moving_tip"])[0])
+                rft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
+                rmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_moving_tip"])[0])
+                rh_pos = torch.mul(torch.tensor(list(map(add, rft_pos, rmt_pos))), 0.5)
+                lh_pos = torch.mul(torch.tensor(list(map(add, lft_pos, lmt_pos))), 0.5)
                 reward = rewards(o_pos, lh_pos)
             else:
+                lft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
+                lmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_moving_tip"])[0])
+                rft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
+                rmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_moving_tip"])[0])
+                rh_pos = torch.mul(torch.tensor(list(map(add, rft_pos, rmt_pos))), 0.5)
+                lh_pos = torch.mul(torch.tensor(list(map(add, lft_pos, lmt_pos))), 0.5)
                 reward = rewards(o_pos, rh_pos)
             #done = terminated or truncated
             observation = np.concatenate((start_angles, o_pos, o_orn), axis=None)
@@ -438,6 +484,8 @@ if __name__ == "__main__":
             state = next_state
             # Perform one step of the optimization (on the policy network)
             optimize_model()
+            #Model_1.state_dict()
+           # optimizer.state_dict()
            # optimize_model_hands()
             # Soft update of the target network's weights
             # θ′ ← τ θ + (1 −τ )θ′

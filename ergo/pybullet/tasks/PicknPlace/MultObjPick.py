@@ -210,6 +210,17 @@ class Obj:
         newobj.isMutant= True
         newobj.ParentId = self.ObjId
         return newobj
+    def MutateObject_RL(self,voxel_,face_):
+        new_mutant_obj_pos = self.positions.copy()
+        obj = self.GetOpenPosition()
+
+        new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[
+            np.random.randint(0, len(self.PositionsAvailable) - 1)]  # worst location on fitness function
+        newobj = Obj(self.extents,self.NoOfParts,self.rgb)
+        newobj.positions = new_mutant_obj_pos
+        newobj.isMutant= True
+        newobj.ParentId = self.ObjId
+        return newobj
     def Multiple_MutateObject(self):
         new_mutant_obj_pos = self.positions.copy()
         #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
