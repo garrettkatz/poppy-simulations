@@ -70,7 +70,7 @@ class PoppyEnv(object):
 
         if action is not None:
             duration = self.control_period * self.timestep
-            distance = np.fabs(action - self.get_position())
+            #distance = np.fabs(action - self.get_position())
             pb.setJointMotorControlArray(
                 self.robot_id,
                 jointIndices = range(len(self.joint_index)),
