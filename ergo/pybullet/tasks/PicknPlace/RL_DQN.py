@@ -372,6 +372,7 @@ if __name__ == "__main__":
         check = env.joint_name
         check_UL = []
         check_LL = []
+        print(env.joint_index)
         for i in range(env.num_joints):
             check_UL.append(pb.getJointInfo(env.robot_id,i)[8])
             check_LL.append(pb.getJointInfo(env.robot_id,i)[9])
@@ -418,17 +419,22 @@ if __name__ == "__main__":
         # keep reasonable posture
         free.remove(env.joint_index["head_z"]) # neck
         free.remove(0) # waist
-
-
+        joint_list = [pb.getJointState(env.robot_id,i)[0] for i in range(14,env.num_joints)]
 
    #     state = torch.from_numpy(state)
         timer = 0
         for t in count():
             timer= timer +1
+            print(pb.getJointState(env.robot_id, env.joint_index["l_gripper"])[0])
+            #print(pb.getJointState(env.robot_id, env.joint_index["l_moving_tip"]))
+            print(pb.getJointState(env.robot_id, env.joint_index["r_gripper"])[0])
+           # print(pb.getJointState(env.robot_id, env.joint_index["r_moving_tip"]))
+          #  print(pb.getJointState(env.robot_id, env.joint_index["r_moving_tip"]))
             lft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
             lmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["l_moving_tip"])[0])
             rft_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
             rmt_pos = list(pb.getLinkState(env.robot_id, env.joint_index["r_moving_tip"])[0])
+
             rh_pos = torch.mul(torch.tensor(list(map(add, rft_pos, rmt_pos))), 0.5)
             lh_pos = torch.mul(torch.tensor(list(map(add, lft_pos, lmt_pos))), 0.5)
 
@@ -499,7 +505,14 @@ if __name__ == "__main__":
                # episode_durations.append(t + 1)
                # plot_durations()
                 break
+        joint_list_update = [pb.getJointState(env.robot_id, i)[0] for i in range(14, env.num_joints)]
         env.close()
+        joint_list_values = []
+        for i in range(env.num_joints):
+            if joint_list[i]-joint_list_update[i] !=0:
+                print(joint_list[i]-joint_list_update[i])
+                joint_list_values.append(i)
+        print(joint_list_values)
     print('Complete')
     plot_durations(show_result=True)
     plt.ioff()
