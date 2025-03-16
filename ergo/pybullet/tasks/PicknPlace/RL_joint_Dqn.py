@@ -202,8 +202,8 @@ def optimize_model():
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch.reshape(BATCH_SIZE,1))
-
+    #state_action_values = policy_net(state_batch).gather(1, action_batch.reshape(BATCH_SIZE, 42).to(dtype=torch.int64))
+    state_action_values = policy_net(state_batch)  # Use output directly
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
     # on the "older" target_net; selecting their best reward with max(1).values
@@ -321,7 +321,8 @@ if __name__ == "__main__":
         # convert back to simulator units
         coords = learner.voxel_to_sim_coords(cands, voxel_corner)
         check = env.joint_name
-
+        check_UL.clear()
+        check_LL.clear()
         for i in range(env.num_joints):
             check_UL.append(pb.getJointInfo(env.robot_id,i)[8])
             check_LL.append(pb.getJointInfo(env.robot_id,i)[9])
@@ -447,7 +448,7 @@ if __name__ == "__main__":
             next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
             # Store the transition in memory
             memory.push(state, torch.tensor(angles), next_state, torch.tensor(reward))
-            print(action_select,reward)
+            print(reward)
             # Move to the next state
             state = next_state
             # Perform one step of the optimization (on the policy network)
