@@ -1075,7 +1075,7 @@ def BigTest():
 
 
 import pickle
-
+from Meshtovoxel import Voxelize
 if __name__ == "__main__":
     import multiprocessing as mp
     import MultObjPick
@@ -1084,11 +1084,16 @@ if __name__ == "__main__":
     voxel_size = 0.015  # dimension of each voxel
     num_prll_prcs = 5
     dims = voxel_size * np.ones(3) / 2  # dims are actually half extents
-    n_parts = 8
+    n_parts = 45
     rgb = [(.75, .25, .25)] * n_parts
     gen0_results = []
     obj = MultObjPick.Obj(dims, n_parts, rgb)
     obj.GenerateObject(dims, n_parts, [0, 0, 0])
+    interm_pos = Voxelize("F6.obj")
+    r = np.array(interm_pos)
+    result = r*voxel_size
+    obj.positions = result
+
     # obj_id = exp.Spawn_Object(obj)
     # Mutant = obj.MutateObject()
     Gen0_obj1_res , num_grips = AttemptGrips(obj,0)
@@ -1098,6 +1103,7 @@ if __name__ == "__main__":
         print("Redo obj1 , fell off the table or bad object")
         obj = MultObjPick.Obj(dims, n_parts, rgb)
         obj.GenerateObject(dims, n_parts, [0, 0, 0])
+        obj.positions = result
         Gen0_obj1_res, num_grips2 = AttemptGrips(obj, 0)
     print("Completed gen 0 original Parent1")
 

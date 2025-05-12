@@ -142,13 +142,18 @@ if __name__ == "__main__":
         state_angles = env.get_position()
        # obj_pos = pb.getBasePositionAndOrientation(tt.add_table())[0]
        # obj_orientation = pb.getBasePositionAndOrientation(tt.add_table())[1]
-
+        orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
+        exp.env.settle(exp.env.get_position(), seconds=3)
+        obj_pos, obj_orientation = pb.getBasePositionAndOrientation(obj_id)
         state = make_state(state_angles, obj_pos, obj_orientation)
         done = False
 
         states, actions, log_probs, rewards_list, values, next_values, dones = [], [], [], [], [], [], []
         steps = 0
         while not done:
+            if steps>1000:
+                done=True
+            steps=steps+1
             state_tensor = state.float()
             action, log_prob = agent.model.get_action(state_tensor)
             next_angles = env.get_position()
@@ -156,12 +161,12 @@ if __name__ == "__main__":
             env.goto_position(list(next_angles), 1)
 
             next_state_angles = env.get_position()
-            next_obj_pos = pb.getBasePositionAndOrientation(tt.add_table())[0]
-            next_obj_orientation = pb.getBasePositionAndOrientation(tt.add_table())[1]
+            next_obj_pos,next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
+            #next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
             next_state = make_state(next_state_angles, next_obj_pos, next_obj_orientation)
 
             reward = rewards(env, next_obj_pos)
-            done = False  # Define termination condition
+            #done = False  # Define termination condition
 
             states.append(state_tensor)
             actions.append(action)

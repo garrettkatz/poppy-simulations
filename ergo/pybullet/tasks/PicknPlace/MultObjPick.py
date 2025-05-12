@@ -323,8 +323,8 @@ class experiment:
         a=self.t_pos[0]
         b=self.t_pos[1] + self.t_ext[1] / 2
         c=self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz -0.001
-        b_position = (self.t_pos[0] +0.02, self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz +0.005)
-        pb.resetBasePositionAndOrientation(ObjInfo, b_position, (0.0, 0.0, 0.0, 1)) # use orn to change orientation
+        b_position = (self.t_pos[0] +0.02, self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz +0.002)
+        pb.resetBasePositionAndOrientation(ObjInfo, b_position, (1.0, 1.0, 0.0, 1)) # use orn to change orientation
         obj.basePosition = b_position
         obj.ObjId = ObjInfo
         return ObjInfo
