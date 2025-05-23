@@ -29,7 +29,7 @@ def Voxelize(filename):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.voxels(voxels, facecolors='blue', edgecolor='none')
-    plt.show()
+    #plt.show()
     return normalized
 
 
