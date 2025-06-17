@@ -210,6 +210,15 @@ class Obj:
         newobj.isMutant= True
         newobj.ParentId = self.ObjId
         return newobj
+
+    def clone_and_mutate_to(self, new_position):
+        new_obj = Obj(self.extents, self.NoOfParts, self.rgb)
+        new_obj.positions = [pos.copy() for pos in self.positions]
+        new_obj.positions[-1] = new_position.copy()
+        new_obj.isMutant = True
+        new_obj.ParentId = getattr(self, "ObjId", None)
+        new_obj.dim = self.dim.copy()
+        return new_obj
     def MutateObject_RL(self,voxel_,face_):
         new_mutant_obj_pos = self.positions.copy()
         obj = self.GetOpenPosition()
@@ -221,22 +230,48 @@ class Obj:
         newobj.isMutant= True
         newobj.ParentId = self.ObjId
         return newobj
+
+    def is_connected(self,positions):
+        if len(positions) <= 1:
+            return True
+
+        pos_set = {tuple(pos) for pos in positions}
+        visited = set()
+        stack = [next(iter(pos_set))]
+
+        neighbor_offsets = [(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1)]
+
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            if len(visited) == len(pos_set):  # Early exit
+                return True
+            for dx, dy, dz in neighbor_offsets:
+                neighbor = (current[0] + dx, current[1] + dy, current[2] + dz)
+                if neighbor in pos_set and neighbor not in visited:
+                    stack.append(neighbor)
+
+        return False  # Not all positions were visited
+
     def Multiple_MutateObject(self):
-        new_mutant_obj_pos = self.positions.copy()
-        #print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
-        #print(np.random.randint(0, len(voxel_pos) - 1))
-        #print(self.PositionsAvailable[np.random.randint(0, len(voxel_pos) - 1)])
-        self.GetOpenPosition()
+        self.GetOpenPosition()  # Updates self.PositionsAvailable
         MutantList = []
-        for i in range(len(self.PositionsAvailable)):
-            new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = self.PositionsAvailable[i].copy()  # all available locations
-            newobj = Obj(self.extents,self.NoOfParts,self.rgb)
-            newobj.positions = new_mutant_obj_pos.copy()
+
+        for pos in self.PositionsAvailable:
+            # Create new position list with the last part replaced
+            new_mutant_obj_pos = self.positions[:-1] + [pos.copy()]
+
+            # Create the mutant object
+            newobj = Obj(self.extents, self.NoOfParts, self.rgb)
+            newobj.positions = new_mutant_obj_pos
             newobj.isMutant = True
             newobj.ParentId = self.ObjId
             newobj.dim = self.dim.copy()
-            #self.PositionsAvailable.remove(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
+
             MutantList.append(newobj)
+
         return MutantList
 
     def _SpawnObject(self,env,dim,noofparts,basepos):
@@ -271,6 +306,32 @@ class Obj:
         ChildObj.positions = childpos
         return ChildObj
 
+    def get_open_positions(self,positions, occupied=None):
+        """
+        Find open voxel positions adjacent to the current object blocks.
+
+        Args:
+            positions: List of current block positions (List[List[int]]).
+            occupied: Optional set of positions to consider occupied (set of tuples).
+                      If None, will use positions as the only occupied space.
+
+        Returns:
+            List of available open positions (List[List[int]]).
+        """
+        neighbors = [(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1)]
+        pos_set = set(tuple(p) for p in positions)
+        occupied = occupied or pos_set
+
+        open_set = set()
+
+        for pos in positions:
+            x, y, z = pos
+            for dx, dy, dz in neighbors:
+                neighbor = (x + dx, y + dy, z + dz)
+                if neighbor not in occupied:
+                    open_set.add(neighbor)
+
+        return [list(pos) for pos in open_set]
     def GetOpenPosition(self):
         positions = self.positions.copy()
         extents = self.extents
@@ -317,14 +378,14 @@ class experiment:
         self.env.set_position(self.init_robot_pos)
         return 0
 
-    def Spawn_Object(self,obj,b_position=0,orn = (0.0, 0.0, 0.0, 1)):
+    def Spawn_Object(self,obj,b_position=0,orn =(1.0, 1.0, 0.0, 1)):
         Boxes = list(zip(map(tuple, obj.positions), obj.extents, obj.rgb))
         ObjInfo = add_box_compound(Boxes)
         a=self.t_pos[0]
         b=self.t_pos[1] + self.t_ext[1] / 2
         c=self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz -0.001
         b_position = (self.t_pos[0] +0.02, self.t_pos[1] + self.t_ext[1] / 2, self.t_pos[2] + self.t_ext[2] + obj.dim[2] / 2 - obj.maxz +0.002)
-        pb.resetBasePositionAndOrientation(ObjInfo, b_position, (1.0, 1.0, 0.0, 1)) # use orn to change orientation
+        pb.resetBasePositionAndOrientation(ObjInfo, b_position, orn) # use orn to change orientation
         obj.basePosition = b_position
         obj.ObjId = ObjInfo
         return ObjInfo

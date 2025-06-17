@@ -284,6 +284,7 @@ class PoppyEnv(object):
         # set pose
         self.set_position(angles)
         if base is not None: self.set_base(*base)
+        pb.setGravity(0,0,-20)
 
         # simulate to equilibrium
         # step duration = control_period * timestep
@@ -295,5 +296,6 @@ class PoppyEnv(object):
         CoM = self.center_of_mass()
         jnt_loc = self.forward_kinematics()
         base = self.get_base()
+        pb.setGravity(0,0,-9.81)
         return CoM, jnt_loc, base
 

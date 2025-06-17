@@ -16,6 +16,7 @@ sys.path.append(os.path.join('..', '..', 'objects'))
 from tabletop import add_table, add_cube, add_obj, add_box_compound, table_position, table_half_extents
 import BaselineLearner
 from operator import add
+import platform
 
 
 class ActorCritic(nn.Module):
@@ -40,13 +41,16 @@ class ActorCritic(nn.Module):
 
     def get_action(self, state):
         mean, std, _ = self.forward(state)
+       # mean = torch.tanh(mean)
         dist = tr.distributions.Normal(mean, std)
-        action = dist.sample()
+        action = dist.rsample()
+        action_norm = torch.tanh(action)
         log_prob = dist.log_prob(action).sum(dim=-1)
-        return action, log_prob
+        log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(dim=-1)
+        return action_norm, log_prob
 
 class PPOAgent:
-    def __init__(self, state_dim, action_dim, lr=3e-4, gamma=0.99, clip_eps=0.2, epochs=10):
+    def __init__(self, state_dim, action_dim, lr=1e-6, gamma=0.99, clip_eps=0.2, epochs=10):
         self.model = ActorCritic(state_dim, action_dim)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.gamma = gamma
@@ -72,28 +76,34 @@ class PPOAgent:
         for _ in range(self.epochs):
             mean, std, new_values = self.model(states)
             dist = tr.distributions.Normal(mean, std)
-            new_log_probs = dist.log_prob(actions).sum(dim=-1)
 
-            ratio = tr.exp(new_log_probs - old_log_probs)
+            # Unsquash actions using atanh (inverse tanh)
+            eps = 1e-6
+            raw_actions = 0.5 * (torch.log1p(actions + eps) - torch.log1p(-actions + eps))
 
-            # PPO clipped objective
+            new_log_probs = dist.log_prob(raw_actions).sum(dim=-1)
+            # Apply log prob correction
+            new_log_probs -= torch.log(1 - actions.pow(2) + 1e-6).sum(dim=-1)
+
+            ratio = torch.exp(new_log_probs - old_log_probs)
+
             surrogate1 = ratio * advantages
-            surrogate2 = tr.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advantages
-            policy_loss = -tr.min(surrogate1, surrogate2).mean()
+            surrogate2 = torch.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advantages
+            policy_loss = -torch.min(surrogate1, surrogate2).mean()
 
             value_loss = nn.functional.mse_loss(new_values.squeeze(), returns)
-
             loss = policy_loss + 0.5 * value_loss
 
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-
-def make_state(angles, object_pos, obj_orientation):
+def make_state(angles, object_pos, obj_orientation,use_right_hand):
     objp = tr.tensor(object_pos)
     objo = tr.tensor(obj_orientation)
     rangles = tr.tensor(angles)
-    return tr.cat((rangles, objp, objo))
+    use_right_hand_value = int(use_right_hand)  # converts True → 1, False → 0
+    use_right_hand_tensor = tr.tensor([use_right_hand_value], dtype=tr.float32)
+    return tr.cat((rangles, objp, objo,use_right_hand_tensor))
 
 def rewards1(env, objpos):
     rh_pos = tr.tensor(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
@@ -134,15 +144,42 @@ def rewards(env, obj_pos, obj_id, use_right_hand):
     # Check if object is picked up (height threshold)
 
     #table_height = table_position()[2] + table_half_extents()[2]
-    pickup_reward = 10 if obj_height > obj_pos[2] + 0.2 else 0  # Adjust threshold as needed
+    pickup_reward = 100 if obj_height > obj_pos[2] + 0.2 else 0 # Adjust threshold as needed
 
     total_reward = approach_reward + pickup_reward
     return total_reward
+
+
+def get_joint_limits(robot_id, joint_indices):
+    """
+    Returns a dictionary mapping joint index to (lower, upper) limits.
+    Only includes the specified joint indices.
+    """
+    joint_limits = {}
+    for idx in joint_indices:
+        info = pb.getJointInfo(robot_id, idx)
+        joint_limits[idx] = (info[8], info[9])  # (lower_limit, upper_limit)
+    return joint_limits
+
+def unnormalize_actions(normalized_action, joint_indices, joint_limits):
+    """
+    Converts normalized actions in [-1, 1] to absolute joint angles for given joint indices.
+    Returns a list of joint angle values (same length as joint_indices).
+    """
+    unnormalized = []
+    for i, idx in enumerate(joint_indices):
+        low, high = joint_limits[idx]
+        # Scale from [-1, 1] → [low, high]
+        scaled = (normalized_action[i] + 1.0) * 0.5 * (high - low) + low
+        unnormalized.append(scaled)
+    return unnormalized
+
+
 import MultObjPick
 import pybullet as pb
 if __name__ == "__main__":
    # env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True, show=False)
-    state_dim = 49  # Adjusted for robot state representation
+    state_dim = 50  # Adjusted for robot state representation
     action_dim = 7  # Assuming 7 joints as actions
     agent = PPOAgent(state_dim, action_dim)
     rewards_out = []
@@ -158,6 +195,7 @@ if __name__ == "__main__":
         gen0_results = []
         obj = MultObjPick.Obj(dims, n_parts, rgb)
         obj.GenerateObject(dims, n_parts, [0, 0, 0])
+        #suppress_cpp_output_start()
 
         grasp_width = 1  # distance between grippers in voxel units
         # voxel_size = 0.015  # dimension of each voxel
@@ -196,24 +234,26 @@ if __name__ == "__main__":
         orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
         exp.env.settle(exp.env.get_position(), seconds=3)
         obj_pos, obj_orientation = pb.getBasePositionAndOrientation(obj_id)
-        state = make_state(state_angles, obj_pos, obj_orientation)
+        # pos of both hands
+        left_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
+        right_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
+
+        # check distance and choose hand
+        dist_left = np.linalg.norm(left_hand_pos - obj_pos)
+        dist_right = np.linalg.norm(right_hand_pos - obj_pos)
+        use_right_hand = dist_right < dist_left
+
+        state = make_state(state_angles, obj_pos, obj_orientation,use_right_hand)
         done = False
 
         states, actions, log_probs, rewards_list, values, next_values, dones = [], [], [], [], [], [], []
         steps = 0
 
-        #pos of both hands
-        left_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
-        right_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
 
-        #check distance and choose hand
-        dist_left = np.linalg.norm(left_hand_pos - obj_pos)
-        dist_right = np.linalg.norm(right_hand_pos - obj_pos)
-        use_right_hand = dist_right < dist_left
 
 
         while not done:
-            if steps>10:
+            if steps>20:
                 done=True
             steps=steps+1
             state_tensor = state.float()
@@ -224,17 +264,21 @@ if __name__ == "__main__":
             else:
                 arm_indices = [22, 23, 24, 25, 26, 27, 28]
 
+            joint_limits = get_joint_limits(env.robot_id, arm_indices)
+            action_unnorm = unnormalize_actions(action, arm_indices, joint_limits)
             for i, idx in enumerate(arm_indices):
-                next_angles[idx] = next_angles[idx] + (0.1*action[i])
+                next_angles[idx] = action_unnorm[i]
+                #next_angles[idx]= action[i]
 
             env.goto_position(list(next_angles))
 
             next_state_angles = env.get_position()
             next_obj_pos,next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
             #next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
-            next_state = make_state(next_state_angles, next_obj_pos, next_obj_orientation)
+            next_state = make_state(next_state_angles, next_obj_pos, next_obj_orientation,use_right_hand)
 
             reward = rewards(env, obj_pos,obj_id,use_right_hand)
+            reward = reward - steps
             #done = False  # Define termination condition
 
             states.append(state_tensor)
@@ -252,6 +296,7 @@ if __name__ == "__main__":
 
         agent.update(tr.stack(states), tr.stack(actions), tr.stack(log_probs),
                      rewards_list, values, next_values, dones)
+        #suppress_cpp_output_stop()
 
         print(f"Episode {episode}, Reward: {sum(rewards_list)}")
         rewards_out.append(sum(rewards_list))
