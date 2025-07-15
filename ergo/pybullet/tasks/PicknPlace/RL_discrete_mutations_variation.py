@@ -106,7 +106,7 @@ def main():
         open_positions = [p for p in mutation_pool if tuple(p) not in used_mutations]
         valid_len = len(open_positions)
 
-        if valid_len < 10:
+        if valid_len < 1:
             print("All mutations tried for current parent. Generating new parent...")
             mutation_pool.clear()
             continue

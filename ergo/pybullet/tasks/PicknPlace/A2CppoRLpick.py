@@ -30,15 +30,16 @@ class ActorCritic(nn.Module):
         )
         self.actor = nn.Linear(64, action_dim)
         self.critic = nn.Linear(64, 1)
-        self.std = nn.Parameter(tr.ones(action_dim) * 0.1)  # Trainable standard deviation
+        #self.sig = nn.functional.sigmoid()
+        self.std = nn.Parameter(tr.ones(action_dim)) # Trainable standard deviation
 
     def forward(self, state):
         features = self.shared(state)
         mean = self.actor(features)
         value = self.critic(features)
-        std = self.std.exp()
+        std = torch.sigmoid(self.std)
         return mean, std, value
-
+w
     def get_action(self, state):
         mean, std, _ = self.forward(state)
        # mean = torch.tanh(mean)
@@ -47,7 +48,7 @@ class ActorCritic(nn.Module):
         action_norm = torch.tanh(action)
         log_prob = dist.log_prob(action).sum(dim=-1)
         log_prob -= torch.log(1 - action.pow(2) + 1e-6).sum(dim=-1)
-        return action_norm, log_prob
+        return action_norm, log_prob,action
 
 class PPOAgent:
     def __init__(self, state_dim, action_dim, lr=1e-6, gamma=0.99, clip_eps=0.2, epochs=10):
@@ -78,10 +79,10 @@ class PPOAgent:
             dist = tr.distributions.Normal(mean, std)
 
             # Unsquash actions using atanh (inverse tanh)
-            eps = 1e-6
-            raw_actions = 0.5 * (torch.log1p(actions + eps) - torch.log1p(-actions + eps))
+           # eps = 1e-6
+          #  raw_actions = torch.atanh(actions.clamp(min=-1 + eps, max=1 - eps))
 
-            new_log_probs = dist.log_prob(raw_actions).sum(dim=-1)
+            new_log_probs = dist.log_prob(actions).sum(dim=-1)
             # Apply log prob correction
             new_log_probs -= torch.log(1 - actions.pow(2) + 1e-6).sum(dim=-1)
 
@@ -122,7 +123,7 @@ def rewards2(env, objpos, obj_id, use_right_hand=True):
     reward = 1.0 / (distance + 1e-4)
     # Pick-up bonus: if object has moved significantly in Z
     current_obj_pos = torch.tensor(pb.getBasePositionAndOrientation(obj_id)[0])
-    if current_obj_pos[2] > 0.1:  # adjust threshold based on object/table height
+    if current_obj_pos[2] > 0.3:  # adjust threshold based on object/table height
         reward += 10.0  # bonus for picking up the object
     return reward
 def rewards(env, obj_pos, obj_id, use_right_hand):
@@ -137,24 +138,12 @@ def rewards(env, obj_pos, obj_id, use_right_hand):
 
     gripper_midpoint = (tip1 + tip2) / 2.0
     obj_height = pb.getBasePositionAndOrientation(obj_id)[0][2]
-    distance = torch.norm(gripper_midpoint - torch.tensor(pb.getBasePositionAndOrientation(obj_id)[0]))
-    approach_reward = 1.0 / (distance*10 + 1e-4)
-    approach_reward = torch.clamp(approach_reward, max=5.0)
 
-    # Check if object is picked up (height threshold)
-
-    #table_height = table_position()[2] + table_half_extents()[2]
-    pickup_reward = 100 if obj_height > obj_pos[2] + 0.2 else 0 # Adjust threshold as needed
-
-    total_reward = approach_reward + pickup_reward
     return total_reward
 
 
 def get_joint_limits(robot_id, joint_indices):
-    """
-    Returns a dictionary mapping joint index to (lower, upper) limits.
-    Only includes the specified joint indices.
-    """
+
     joint_limits = {}
     for idx in joint_indices:
         info = pb.getJointInfo(robot_id, idx)
@@ -162,10 +151,7 @@ def get_joint_limits(robot_id, joint_indices):
     return joint_limits
 
 def unnormalize_actions(normalized_action, joint_indices, joint_limits):
-    """
-    Converts normalized actions in [-1, 1] to absolute joint angles for given joint indices.
-    Returns a list of joint angle values (same length as joint_indices).
-    """
+
     unnormalized = []
     for i, idx in enumerate(joint_indices):
         low, high = joint_limits[idx]
@@ -226,9 +212,9 @@ if __name__ == "__main__":
         # convert back to simulator units
         coords = learner.voxel_to_sim_coords(cands, voxel_corner)
         state_angles = env.get_position()
-      #  for i in range(pb.getNumJoints(env.robot_id)):
-          #  info = pb.getJointInfo(env.robot_id, i)
-          #  print(f"Joint {i}: {info[1].decode('utf-8')}")
+        for i in range(pb.getNumJoints(env.robot_id)):
+            info = pb.getJointInfo(env.robot_id, i)
+            print(f"Joint {i}: {info[1].decode('utf-8')}")
        # obj_pos = pb.getBasePositionAndOrientation(tt.add_table())[0]
        # obj_orientation = pb.getBasePositionAndOrientation(tt.add_table())[1]
         orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
@@ -257,7 +243,7 @@ if __name__ == "__main__":
                 done=True
             steps=steps+1
             state_tensor = state.float()
-            action, log_prob = agent.model.get_action(state_tensor)
+            action, log_prob,raw_act = agent.model.get_action(state_tensor)
             next_angles = env.get_position()
             if use_right_hand:
                 arm_indices = [32, 33, 34, 35, 36, 37, 38]
@@ -274,15 +260,13 @@ if __name__ == "__main__":
 
             next_state_angles = env.get_position()
             next_obj_pos,next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
-            #next_obj_orientation = pb.getBasePositionAndOrientation(obj_id)
             next_state = make_state(next_state_angles, next_obj_pos, next_obj_orientation,use_right_hand)
 
             reward = rewards(env, obj_pos,obj_id,use_right_hand)
             reward = reward - steps
-            #done = False  # Define termination condition
 
             states.append(state_tensor)
-            actions.append(action)
+            actions.append(raw_act)
             log_probs.append(log_prob)
             rewards_list.append(reward)
             values.append(agent.model(state_tensor)[2].detach())
@@ -301,5 +285,5 @@ if __name__ == "__main__":
         print(f"Episode {episode}, Reward: {sum(rewards_list)}")
         rewards_out.append(sum(rewards_list))
         env.close()
-        if episode % 10000 == 0 and episode != 0:
+        if episode % 50000 == 0 and episode != 0:
             torch.save(agent.model.state_dict(),f"ppo_model_ep_{episode}.pth")

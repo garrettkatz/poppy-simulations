@@ -20,10 +20,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5554affb-00b4-4abc-b79a-35f3506ebad6" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pybullet/envs/poppy_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/envs/poppy_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pybullet/tasks/check/ErrorPlot.png" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/check/ErrorPlot.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pybullet/tasks/check/slots.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/check/slots.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/rewards.pickle" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/rewards2ndexperiment.pickle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/A2CppoRLpick.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/A2CppoRLpick.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/RL_discrete_mutations_variation.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/RL_discrete_mutations_variation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/Resultgraph.py" beforeDir="false" afterPath="$PROJECT_DIR$/pybullet/tasks/PicknPlace/Resultgraph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +40,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="20NFitzDI1EDNJQGt170AIuw7FI" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -102,6 +106,7 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -125,7 +130,6 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="WindowStateProjectService">
     <state x="2660" y="275" key="FileChooserDialogImpl" timestamp="1654559729056">

@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import random
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ==== Q-Network Definition ====
 class QNetwork(nn.Module):
     def __init__(self, state_dim, action_dim):
@@ -69,16 +70,21 @@ def main():
 
     voxel_size = 0.015
     half_size = voxel_size / 2
-    n_parts = 15
+    n_parts = 12
     state_dim = n_parts * 3
 
     # We’ll pick max number of open positions to keep action_dim fixed
     max_action_dim = n_parts*6
-
-    q_net = QNetwork(state_dim, max_action_dim)
+    print(device)
+    q_net = QNetwork(state_dim, max_action_dim).to(device)
     optimizer = torch.optim.Adam(q_net.parameters(), lr=1e-3)
     gamma = 0.99
-    epsilon = 0.1
+    epsilon = 0.5
+
+    target_q_net = QNetwork(state_dim, max_action_dim).to(device)
+    target_q_net.load_state_dict(q_net.state_dict())
+    target_q_net.eval()
+    target_update_frequency = 10
 
     for episode in range(500):
         dims = voxel_size * np.ones(3) / 2
@@ -93,18 +99,20 @@ def main():
             parent_reward, parent_grasps = AttemptGrips(obj, 0)
             if parent_grasps > 0:
                 break
+        positions_np = np.array(obj.positions)
+        state = torch.tensor(positions_np.flatten(), dtype=torch.float32)
+        current_open_positions = get_open_positions(obj.positions, voxel_size=voxel_size)
+        original_num_open_positions = len(current_open_positions)
 
-        state = torch.tensor(obj.positions.flatten(), dtype=torch.float32)
-        open_positions = get_open_positions(obj.positions, voxel_size=voxel_size)
-
-        # Pad or truncate open_positions to max_action_dim
-        if len(open_positions) < max_action_dim:
-            open_positions += [open_positions[-1]] * (max_action_dim - len(open_positions))
+        padded_open_positions = list(current_open_positions)
+        if original_num_open_positions < max_action_dim:
+            dummy_pos = np.array([float('nan'), float('nan'), float('nan')])
+            padded_open_positions.extend([dummy_pos] * (max_action_dim - original_num_open_positions))
         else:
-            open_positions = open_positions[:max_action_dim]
+            padded_open_positions = padded_open_positions[:max_action_dim]
 
-        mask = torch.zeros(max_action_dim)
-        mask[:len(open_positions)] = 1
+        mask = torch.zeros(max_action_dim, dtype=torch.bool).to(device) # Changed to torch.bool, added .to(device)
+        mask[:original_num_open_positions] = True
 
         with torch.no_grad():
             _, probs = q_net(state, mask)
@@ -115,9 +123,13 @@ def main():
         else:
             action_idx = torch.argmax(probs).item()
 
-        selected_pos = open_positions[action_idx]
+        selected_pos = padded_open_positions[action_idx]
 
-
+        if np.isnan(selected_pos).all() and original_num_open_positions < max_action_dim:
+            print(f"Warning: Selected a dummy position! This indicates an issue with masking or action selection.")
+            reward = -500.0 # Heavy penalty
+            num_grasps = -1
+            continue
         mutated_obj = obj.clone_and_mutate_to(selected_pos)
 
         if not is_connected(mutated_obj.positions):
@@ -129,19 +141,22 @@ def main():
                 continue
             reward = 1-num_grasps
 
-        next_state = torch.tensor(mutated_obj.positions.flatten(), dtype=torch.float32)
+        next_state = torch.tensor(np.array(mutated_obj.positions).flatten(), dtype=torch.float32)
         with torch.no_grad():
             next_q, _ = q_net(next_state, mask)
             max_next_q = torch.max(next_q)
 
-        q_values, _ = q_net(state, mask)
+        q_values_all, _ = q_net(state, mask)
+        current_q_value = q_values_all[action_idx]
         target = reward + gamma * max_next_q
-        loss = F.mse_loss(q_values[action_idx], target)
+        loss = F.mse_loss(current_q_value, target.detach())
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        if episode % target_update_frequency == 0:
+            target_q_net.load_state_dict(q_net.state_dict())
+            print(f"Episode {episode}: Target Q-network updated.")
         print(f"Episode {episode} | Reward: {reward:.2f} | Grasps: {num_grasps}")
 
 if __name__ == "__main__":

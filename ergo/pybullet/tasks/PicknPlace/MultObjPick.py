@@ -99,13 +99,12 @@ def ObjectOpenPositions(positions, extents):
     return extents, voxel_positions
 
 
-def mutate(Obj_extents, Obj_pos, Voxel_pos, Voxel_extents):
+def mutate(Obj_extents, Obj_pos, voxel_pos, Voxel_extents):
     new_mutant_obj_pos = Obj_pos.copy()
-    print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
-    print(np.random.randint(0, len(voxel_pos) - 1))
-    print(Voxel_pos[np.random.randint(0, len(voxel_pos) - 1)])
-    new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = Voxel_pos[
-        np.random.randint(0, len(voxel_pos) - 1)]  # worst location on fitness function
+   # print(new_mutant_obj_pos[len(new_mutant_obj_pos) - 1])
+    #print(np.random.randint(0, len(voxel_pos) - 1))
+    #print(voxel_pos[np.random.randint(0, len(voxel_pos) - 1)])
+    new_mutant_obj_pos[len(new_mutant_obj_pos) - 1] = voxel_pos[np.random.randint(0, len(voxel_pos) - 1)]  # worst location on fitness function
     return new_mutant_obj_pos, Obj_extents
 
 

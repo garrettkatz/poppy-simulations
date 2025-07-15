@@ -806,7 +806,7 @@ def AttemptGrips(obj,gen):
             # input('.')
         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
         height = (picked_pos[2] - rest_pos[2])
-        if ((picked_pos[2]>rest_pos[2])>0.004):
+        if ((picked_pos[2]-rest_pos[2])>0.004):
             num_grips_success = num_grips_success+1
             print("S")
         elif ((picked_pos[2]-rest_pos[2])<=0.004):
