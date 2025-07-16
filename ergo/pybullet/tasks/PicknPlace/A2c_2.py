@@ -326,13 +326,13 @@ if __name__ == "__main__":
     gen0_results = []
     obj = MultObjPick.Obj(dims, n_parts, rgb)
     grasp_width = 1  # distance between grippers in voxel units
-    learner = BaselineLearner.BaselineLearner(grasp_width, voxel_size)
+    #learner = BaselineLearner.BaselineLearner(grasp_width, voxel_size)
     obj.GenerateObject(dims, n_parts, [0, 0, 0])
-    voxels, voxel_corner = learner.object_to_voxels(obj)
+    #voxels, voxel_corner = learner.object_to_voxels(obj)
     # get candidate grasp points
-    cands = learner.collect_grasp_candidates(voxels)
+    #cands = learner.collect_grasp_candidates(voxels)
     # convert back to simulator units
-    coords = learner.voxel_to_sim_coords(cands, voxel_corner)
+    #coords = learner.voxel_to_sim_coords(cands, voxel_corner)
 
     if resume== 1:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -450,7 +450,7 @@ if __name__ == "__main__":
             areward,preward,graspcheck = rewards(env, obj_pos,obj_id,use_right_hand)
             #done = False  # Define termination condition
             #preward=preward if preward>0 else 0.0
-            reward = areward+preward
+            reward = areward+preward if preward > 0.7 else preward
             total_approach_reward += areward.item()
             total_pickup_reward += preward.item()
             reward = torch.clamp(reward, min=0.0)
