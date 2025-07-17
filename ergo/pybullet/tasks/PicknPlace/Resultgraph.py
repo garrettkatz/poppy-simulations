@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Parameters
-filename = 'rewards2ndexperiment.pickle'  # Replace with your actual filename
+filename = 'rewards9thexperiment_contactP_entropy_rewards.pickle'  # Replace with your actual filename
 window_size = 100           # Adjust this as needed
 
 # 1. Load the raw rewards

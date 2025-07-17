@@ -15,7 +15,7 @@ class PoppyEnv(object):
         control_mode=pb.POSITION_CONTROL,
         timestep=1/240,
         control_period=1,
-        show=True,
+        show=False,
         step_hook=None,
         use_fixed_base=False,
         use_self_collision=False,
