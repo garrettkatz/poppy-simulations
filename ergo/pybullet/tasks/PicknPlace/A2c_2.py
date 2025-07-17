@@ -242,13 +242,16 @@ def rewards_potential(env, obj_pos, obj_id, use_right_hand, v_f, old_distance=No
 
     if len(tip_contacts) > 0:
         pickup_reward -= 0.1
+        #print("penalty")
 
     for link_idx in gripper_link_indices:
         contact_points = pb.getContactPoints(env.robot_id, obj_id, link_idx, -1)
         if len(contact_points) == 1:
             pickup_reward += 1
+            print("touch")
         if len(contact_points) > 1:
             pickup_reward += 2
+            print("touch")
 
     if obj_height > obj_pos[2] + 0.2:
         g_check = True
@@ -293,6 +296,7 @@ def rewards(env, obj_pos, obj_id, use_right_hand):
     pickup_reward = torch.clamp(pickup_reward, min=0.0)
     if len(tip_contacts)>0:
         pickup_reward-=1
+        print("penalty")
 
         #print("penalty for overlapping grippers")
     for link_idx in gripper_link_indices: # This loop now only checks the specified gripper tips
@@ -425,7 +429,8 @@ if __name__ == "__main__":
         exp = MultObjPick.experiment()
         exp.CreateScene()
         env = exp.env
-
+        pb.setCollisionFilterPair(env.robot_id, env.robot_id, env.joint_index["l_fixed_tip"], env.joint_index["l_moving_tip"], enableCollision=1)
+        pb.setCollisionFilterPair(env.robot_id, env.robot_id, env.joint_index["r_fixed_tip"], env.joint_index["r_moving_tip"], enableCollision=1)
         pb.resetDebugVisualizerCamera(
             cameraDistance=1.4,
             cameraYaw=-1.2,
@@ -551,17 +556,19 @@ if __name__ == "__main__":
             old_distance = new_distance
             #done = False  # Define termination condition
             #preward=preward if preward>0 else 0.0
-            reward = areward+preward #if new_distance < 0.05 else areward
+            reward = areward+preward if new_distance < 0.05 else areward
+            if new_distance<0.015:
+                print("Close")
             total_approach_reward += areward.item()
             total_pickup_reward += preward.item()
            # reward = torch.clamp(reward, min=0.0)
-            reward = reward - 0.01*steps
+            reward = reward - 0.001*steps
             done = graspcheck
             if steps>50:
                 done=True
             steps=steps+1
             if graspcheck == True and steps<=50:
-                reward+= (50-steps)*0.1
+                reward+= (50-steps)*0.01
             states.append(state_tensor)
             actions.append(raw_action)
             log_probs.append(log_prob)
@@ -576,7 +583,7 @@ if __name__ == "__main__":
             final_value = agent.model(state.float())[2].squeeze()
         values = torch.stack(values).squeeze()
         next_values = torch.cat([values[1:], final_value.unsqueeze(0)], dim=0)
-        agent.update_avg_rewards(total_approach_reward, total_pickup_reward)
+        agent.update_avg_rewards(total_approach_reward, total_pickup_reward/50)
         #agent.last_pickup_reward_avg = total_pickup_reward/50
         #agent.last_approach_reward_avg = total_approach_reward/50
         agent.update(tr.stack(states), tr.stack(actions), tr.stack(log_probs),rewards_list,arewardlist,prewardlist,new_distance, values, next_values, dones)

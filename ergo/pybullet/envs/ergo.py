@@ -15,7 +15,7 @@ class PoppyErgoEnv(PoppyEnv):
             basePosition = (0, 0, .43),
             baseOrientation = pb.getQuaternionFromEuler((0,0,0)),
             useFixedBase=use_fixed_base,
-            flags = pb.URDF_USE_SELF_COLLISION if use_self_collision else 0,
+            flags = pb.URDF_USE_SELF_COLLISION |pb.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS if use_self_collision else 0,
         )
         return robot_id
 

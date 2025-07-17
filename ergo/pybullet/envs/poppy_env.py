@@ -15,10 +15,10 @@ class PoppyEnv(object):
         control_mode=pb.POSITION_CONTROL,
         timestep=1/240,
         control_period=1,
-        show=False,
+        show=True,
         step_hook=None,
-        use_fixed_base=False,
-        use_self_collision=False,
+        use_fixed_base=True,
+        use_self_collision=pb.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS,
     ):
 
         # step_hook(env, action) is called in each env.step(action)
@@ -39,7 +39,8 @@ class PoppyEnv(object):
         
         # use overridden loading logic
         self.robot_id = self.load_urdf(use_fixed_base, use_self_collision)
-
+        n = pb.getNumJoints(self.robot_id)
+        c=pb.getContactPoints(bodyA=self.robot_id, bodyB=self.robot_id)
         self.num_joints = pb.getNumJoints(self.robot_id)
         self.joint_name, self.joint_index, self.joint_fixed = {}, {}, {}
         self.joint_low = np.empty(self.num_joints)
