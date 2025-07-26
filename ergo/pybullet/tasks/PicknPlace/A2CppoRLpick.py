@@ -39,7 +39,7 @@ class ActorCritic(nn.Module):
         value = self.critic(features)
         std = torch.sigmoid(self.std)
         return mean, std, value
-w
+
     def get_action(self, state):
         mean, std, _ = self.forward(state)
        # mean = torch.tanh(mean)
@@ -221,6 +221,12 @@ if __name__ == "__main__":
         exp.env.settle(exp.env.get_position(), seconds=3)
         obj_pos, obj_orientation = pb.getBasePositionAndOrientation(obj_id)
         # pos of both hands
+        state_angles = env.get_position()
+        for i in range(pb.getNumJoints(env.robot_id)):
+          info = pb.getJointInfo(env.robot_id, i)
+          print(f"Joint {i}: {info[1].decode('utf-8')}")
+        info = pb.getJointInfo(env.robot_id, env.joint_index["l_moving_tip"])
+        print("Lower limit:", info[8], "Upper limit:", info[9])
         left_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["l_fixed_tip"])[0])
         right_hand_pos = np.array(pb.getLinkState(env.robot_id, env.joint_index["r_fixed_tip"])[0])
 

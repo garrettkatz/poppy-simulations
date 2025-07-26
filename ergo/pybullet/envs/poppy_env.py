@@ -15,10 +15,10 @@ class PoppyEnv(object):
         control_mode=pb.POSITION_CONTROL,
         timestep=1/240,
         control_period=1,
-        show=True,
+        show=False,
         step_hook=None,
         use_fixed_base=True,
-        use_self_collision=pb.URDF_USE_SELF_COLLISION_EXCLUDE_ALL_PARENTS,
+        use_self_collision=True,
     ):
 
         # step_hook(env, action) is called in each env.step(action)
