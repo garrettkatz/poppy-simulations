@@ -353,9 +353,9 @@ class Obj:
         return self
 
 class experiment:
-    def __init__(self):
+    def __init__(self,_show):
 
-        self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True)
+        self.env = PoppyErgoEnv(pb.POSITION_CONTROL, use_fixed_base=True,show=_show)
         sys.path.append(os.path.join('..', '..', 'envs'))
         sys.path.append(os.path.join('..', '..', 'objects'))
         add_table()

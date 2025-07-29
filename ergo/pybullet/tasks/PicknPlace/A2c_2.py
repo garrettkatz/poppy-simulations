@@ -435,9 +435,11 @@ if __name__ == "__main__":
         Num_Grips_attempted = 0
         Result = []
         num_objects = 1
+        show =False
        # obj.GenerateObject(dims, n_parts, [0, 0, 0])
-
-        exp = MultObjPick.experiment()
+        if episode % 10000 == 0:
+            show =True
+        exp = MultObjPick.experiment(show)
         exp.CreateScene()
         env = exp.env
 
