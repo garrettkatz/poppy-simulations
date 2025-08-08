@@ -776,7 +776,7 @@ if __name__ == "__main__":
     preward_out = []
     log_p = []
     std_d = []
-    resume = 0
+    resume = 1
     episode = 0
     max_episodes = 1000000
     voxel_size = 0.015
