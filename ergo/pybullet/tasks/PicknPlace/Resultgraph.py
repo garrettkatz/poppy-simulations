@@ -4,8 +4,8 @@ import numpy as np
 import torch
 
 # Parameters
-filename = 'rewards10thexperiment_contactP_entropy_rewards.pickle'
-window_size = 50
+filename = 'rewards2.pickle'
+window_size = 100
 
 def recursive_to_numpy(obj):
     if isinstance(obj, torch.Tensor):
@@ -30,6 +30,7 @@ raw_rewards = np.nan_to_num(raw_rewards, nan=0.0, posinf=1e6, neginf=-1e6)
 
 # 4. Cap the raw rewards for plotting
 capped_rewards = np.minimum(raw_rewards, 40)
+capped_rewards = np.maximum(raw_rewards,-40)
 
 # 5. Compute the running average (over the window size), using convolution (safer)
 if len(raw_rewards) >= window_size:

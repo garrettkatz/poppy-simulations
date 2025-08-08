@@ -54,8 +54,8 @@ class ActorCritic(nn.Module):
         )
         self.actor = nn.Linear(256, action_dim)
         self.critic = nn.Linear(256, 1)
-        self.std = nn.Parameter(tr.zeros(action_dim))  # Trainable standard deviation
-
+        #self.std = nn.Parameter(tr.zeros(action_dim))  # Trainable standard deviation
+        self.log_std = nn.Parameter(torch.full((action_dim,), -1.0))  # ~exp(-1) ≈ 0.37
         self.approach_joints_idx = []
         self.pickup_joints_idx = []
 
@@ -63,7 +63,10 @@ class ActorCritic(nn.Module):
         features = self.shared(state)
         mean = self.actor(features)
         value = self.critic(features)
-        std = torch.sigmoid(self.std) * 0.3
+        #std = torch.sigmoid(self.std) * 0.3
+        log_std = self.log_std.clamp(-5, 0) # log_std = 0 -> std = 1.0 | log_std = -5 ->std = 0.0067
+        std = torch.exp(log_std)
+        #std = std.clamp(min=0.001, max=1.0)
         return mean, std, value
 
     def get_action(self, state):
@@ -110,13 +113,13 @@ class PPOAgent:
             gae = delta + 0.99 * 0.95 * (1 - dones[i]) * gae  # gamma = 0.99 , gae alpha =0.95
             advantages.insert(0, gae)
             returns.insert(0, gae + values[i])
-        advantages = torch.tensor(advantages, device=device, dtype=torch.float16)
-        returns = torch.tensor(returns, device=device, dtype=torch.float16)
+        advantages = torch.tensor(advantages, device=device, dtype=torch.float32)
+        returns = torch.tensor(returns, device=device, dtype=torch.float32)
         # Normalize advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         return advantages, returns
     def update(self, states, actions, old_log_probs, rewards, approach_rewards, pickup_rewards,distance, values, next_values, dones):
-        advantages, returns = self.compute_advantage(rewards, values, next_values, dones)
+        advantages, returns = self.compute_gae_advantages(rewards, values, next_values, dones)
 
         # FIX: Detach to avoid backward-through-graph error
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-4)
@@ -132,10 +135,7 @@ class PPOAgent:
             mean, std, new_values = self.model(states)
             dist = tr.distributions.Normal(mean, std)
 
-            # Unsquash actions using atanh (inverse tanh)
-            #eps = 1e-6
-            #raw_actions = 0.5 * torch.log((1 + actions) / (1 - actions + 1e-8))
-            #safe_actions = torch.clamp(actions, -0.99, 0.99)
+            #actions are raw , conver to normalized version using tanh
             squashed_actions = torch.tanh(actions)
             safe_actions = torch.clamp(squashed_actions, -0.99, 0.99)
 
@@ -162,13 +162,13 @@ class PPOAgent:
             pickup_mask= (distance<=0.05).float().to(values.device)
             pickup_mask_inverse =(distance>0.05).float().to(values.device)
             min_beta = 0.001
-            max_beta = 0.1
+            max_beta = 0.01
             denominator = math.expm1(1)
-            frac = torch.expm1(inv_approach)/denominator
+            frac = torch.expm1(inv_approach)/math.expm1(2)
             current_approach_entropy_coeff = min_beta +(max_beta-min_beta)*frac
             frac_p = torch.expm1(inv_pickup) / denominator
 
-            current_pickup_entropy_coeff = (pickup_mask * (min_beta + (0.01 - min_beta) * frac_p) + pickup_mask_inverse * min_beta)
+            current_pickup_entropy_coeff =min_beta +(max_beta-min_beta)*frac_p
 
             entropy_approach = joint_entropies[:, self.model.approach_joints_idx].sum(dim=-1) * dones_mask
             entropy_pickup = joint_entropies[:, self.model.pickup_joints_idx].sum(dim=-1) * dones_mask
@@ -210,22 +210,23 @@ def make_state(angles,pos1,pos2, object_pos, obj_orientation,use_right_hand,obj_
     rangles = tr.tensor(angles)
 
     use_right_hand_value = int(use_right_hand)  # converts True → 1, False → 0
-    use_right_hand_tensor = tr.tensor([use_right_hand_value], dtype=tr.float16)
+    use_right_hand_tensor = tr.tensor([use_right_hand_value], dtype=tr.float32)
     # Base state (15D): joint angles + object position + orientation + hand indicator
     base_state = tr.cat((rangles,pos1,pos2, objp, objo, use_right_hand_tensor))
 
     # Optionally concatenate voxel-based object features
     if obj_part_positions is not None:
-        part_tensor = torch.tensor(np.array(obj_part_positions), dtype=tr.float16).flatten()
+        part_tensor = torch.tensor(np.array(obj_part_positions), dtype=tr.float32).flatten()
         return torch.cat((part_tensor,base_state))
     else:
         return base_state
 
 old_obj_height = 0.0
 was_touching = False
-def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_distance=None, scale_factor=1.0):
+def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_distance, scale_factor):
     g_check = False
     global  old_obj_height
+    global was_touching
     ip_positions = [torch.tensor(pb.getLinkState(env.robot_id, idx)[0]) for idx in gripper_link_indices]
 
     tip_contacts = pb.getContactPoints(bodyA=env.robot_id, bodyB=env.robot_id,
@@ -235,53 +236,45 @@ def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_dista
     gripper_midpoint = (ip_positions[0] + ip_positions[1]) / 2.0
     # Compute distance to nearest voxel
     v_f_np = np.array(v_f)
-    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float16)  # shape (n_voxels, 3)
+    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float32)  # shape (n_voxels, 3)
     distances = torch.norm(v_f_tensor - gripper_midpoint, dim=1)
     new_distance = torch.min(distances)
+    mean_distance = torch.mean(distances)
 
     # → Compute approach reward as potential difference
     if old_distance is None:
         approach_reward = torch.tensor(0.0)
     else:
-        diff = (old_distance - new_distance)*scale_factor #0.045
+        diff = (old_distance - mean_distance)*scale_factor #0.045
         diff_clamped = torch.clamp(diff, -1.0, 1.0)
         approach_reward = diff_clamped
     if new_distance<0.05:
-        approach_reward+=1
-
-    gripper_width_reward = torch.tensor(0.0)
-
-    optimal_width = 0.020
-    width_tolerance = 0.012
-    width_error = torch.abs(tip_distance - optimal_width)
-    if width_error < width_tolerance:
-        gripper_width_reward = 0.5 * (1.0 - width_error / width_tolerance)  # Max 0.5
-    else:
-        excess_error = width_error - width_tolerance
-        gripper_width_reward = -0.3 * torch.clamp(excess_error / width_tolerance, 0.0, 2.0)
+        approach_reward +=1
 
     distance_pickup_reward = torch.tensor(0.0)
     if new_distance<=0.05:
         max_dist = 0.05
         norm_dist = (max_dist - new_distance) / max_dist
-        approach_reward  = approach_reward + (norm_dist ** 2)  # Max 0.5
+        approach_reward  = approach_reward + (norm_dist ** 2)  # Max 1.0
+    else:
+        approach_reward-=0.1
+    gripper_width_reward = torch.tensor(0.0)
+
+    optimal_width = 0.018
+    width_tolerance = 0.006  # range [0.012 - 0.024]
+    width_error = torch.abs(tip_distance - optimal_width)
+    if width_error < width_tolerance:
+        gripper_width_reward = 0.5 * (1.0 - width_error / width_tolerance)  # Max 0.5
+    else:
+        excess_error = width_error - width_tolerance
+        gripper_width_reward = -0.1 * torch.clamp(excess_error / width_tolerance, 0.0, 2.0) # range [-0.2,0]
+
+
 
     pickup_reward = torch.tensor(0.0)
     obj_height = pb.getBasePositionAndOrientation(obj_id)[0][2]
     height_reward = torch.tensor(0.0)
     height_diff = obj_height - obj_pos[2]
-
-    if height_diff > 0.01:
-        if height_diff < 0.05:
-            height_reward = 2.0 * (height_diff / 0.05)  # Max 2.0 for initial lift
-        else:
-            height_reward = 2.0 + 1.0 * (height_diff - 0.05)  # +1.0 per additional 0.05
-
-   # pickup_reward = (10) if obj_height > obj_pos[2] + 0.2 else (obj_height - obj_pos[2])*30
-    pickup_reward += height_reward
-    pickup_reward += gripper_width_reward
-    #pickup_reward+= distance_pickup_reward
-
     all_contact_points = []
     fingers_touching = 0
     for link_idx in gripper_link_indices:
@@ -295,23 +288,40 @@ def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_dista
         if len(contact_points) > 0:  # This finger is touching
             fingers_touching += 1
     if fingers_touching == 1:
-        pickup_reward += 0.5
+        pickup_reward += 0.1
         #print("touch reward")
     is_touching = False
     if fingers_touching >= 2:
-        pickup_reward += 1
+        pickup_reward += 0.5
         is_touching =True
-        print("double touch reward ")
+        if was_touching == True:
+            pickup_reward+=0.5
+            print("Continuous touch reward")
+        else:
+            print("first double touch reward ")
 
+    if is_touching == False and was_touching == True:
+        pickup_reward-=0.5
+        approach_reward-=0.1
+        print("Stopped touching penality")
+    if height_diff > 0.01 and is_touching:
+        if height_diff < 0.05:
+            height_reward = 2.0 * (height_diff / 0.05)  # Max 2.0 for initial lift
+        else:
+            height_reward = 2.0 + 1.0 * (height_diff - 0.05)  # +1.0 per additional 0.05
+
+        # pickup_reward = (10) if obj_height > obj_pos[2] + 0.2 else (obj_height - obj_pos[2])*30
+    pickup_reward += height_reward
+    pickup_reward += gripper_width_reward
     if obj_height > obj_pos[2] + 0.2 and is_touching:
         g_check = True
         pickup_reward+=10.0
         print("Pick success")
 #penalities
     if len(tip_contacts) > 0:
-        pickup_reward -= 0.3
+        pickup_reward -= 0.01
         # Penalty for object falling
-    global  was_touching
+   # global  was_touching
     if obj_height - old_obj_height < -0.1 and was_touching == True and is_touching==False:
         print("Dropping object penality!")
         pickup_reward -=1.0
@@ -333,7 +343,7 @@ def get_joint_limits(robot_id, joint_indices):
     return joint_limits
 
 def get_object_voxels(voxels):
-    flattened = torch.tensor(voxels, dtype=torch.float16).flatten()
+    flattened = torch.tensor(voxels, dtype=torch.float32).flatten()
     return flattened
 
 def unnormalize_actions(normalized_action, joint_indices, joint_limits):
@@ -349,13 +359,13 @@ def unnormalize_actions(normalized_action, joint_indices, joint_limits):
         unnormalized.append(scaled)
     return unnormalized
 
-PICKLE_FILE = 'rewards11thexperiment_contactP_entropy_rewards.pickle'
-PICKLE_FILE2 = 'rewards11thexperiment_contactP_entropy_logprob.pickle'
-PICKLE_FILE3 = 'rewards11thdexperiment_contactP_entropy_stddev.pickle'
+PICKLE_FILE = 'crewards14thexperiment_contactP_entropy_rewards.pickle'
+PICKLE_FILE2 = 'crewards14thexperiment_contactP_entropy_logprobs.pickle'
+PICKLE_FILE3 = 'crewards14thdexperiment_contactP_entropy_stddev.pickle'
 
-PICKLE_FILE4 = 'rewards11thexperiment_contactP_entropy_arewards.pickle'
+PICKLE_FILE4 = 'rewards12thexperiment_contactP_entropy_Entropy.pickle'
 
-PICKLE_FILE5 = 'rewards11thexperiment_contactP_entropy_prewards.pickle'
+PICKLE_FILE5 = 'rewards12thexperiment_contactP_entropy_EntropyCoeff.pickle'
 # Function to append rewards to the pickle file
 def append_rewards_to_pickle(new_rewards, file_path):
     # Load existing data if file exists
@@ -371,8 +381,29 @@ def append_rewards_to_pickle(new_rewards, file_path):
     # Save updated data
     with open(file_path, 'wb') as f:
         pickle.dump(all_rewards, f)
+def append_to_txt(data_list, file_path):
+    """
+    Append to text file - very fast, no loading needed
+    """
+    with open(file_path, 'a') as f:
+        for value in data_list:
+            f.write(f"{value}\n")
 
+def append_std_to_txt(std_list, file_path):
+    """Append std dev arrays to text file"""
+    with open(file_path, 'a') as f:
+        for std in std_list:
+            if hasattr(std, 'detach'):
+                std = std.detach().cpu().numpy()
+            # Write all 7 values on one line, comma-separated
+            f.write(' '.join(map(str, std[:7])) + '\n')
 
+def load_from_txt(file_path):
+    """Load for matplotlib"""
+    try:
+        return np.loadtxt(file_path)
+    except:
+        return np.array([])
 import MultObjPick
 import pybullet as pb
 if __name__ == "__main__":
@@ -403,7 +434,7 @@ if __name__ == "__main__":
     preward_out = []
     log_p = []
     std_d = []
-    resume = 0
+    resume = 1
     episode = 0
     max_episodes = 1000000
     voxel_size = 0.015  # dimension of each voxel
@@ -419,23 +450,21 @@ if __name__ == "__main__":
 
     if resume== 1:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        checkpoint = torch.load('ppo_checkpoint_2.pth', map_location=device)
+        checkpoint = torch.load('ppo_checkpoint_5.pth', map_location=device)
         print(checkpoint.keys())
         agent.model.load_state_dict(checkpoint['model_state_dict'])
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        episode = checkpoint['epoch']
+        episode = checkpoint['epoch']+1
         obj.positions = checkpoint['object']
         print("Loaded checkpoint")
    # print(f"Joint {i}: {info[1].decode('utf-8')}")
     while episode < max_episodes:
-
+        Max_steps = 50
         table_height = table_position()[2] + table_half_extents()[2]  # z coordinate of table surface
-
         Num_success = 0
-        Num_Grips_attempted = 0
         Result = []
         num_objects = 1
-        show =False
+        show = False
        # obj.GenerateObject(dims, n_parts, [0, 0, 0])
         if episode % 10000 == 0:
             show =True
@@ -444,13 +473,8 @@ if __name__ == "__main__":
         env = exp.env
 
         pb.resetDebugVisualizerCamera(cameraDistance=1.4,cameraYaw=-1.2,cameraPitch=-39.0,cameraTargetPosition=(0., 0., 0.),)
-
-
         obj_id = exp.Spawn_Object(obj)
-
-
         state_angles = env.get_position()
-
         orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
         if episode !=0:
 
@@ -491,6 +515,11 @@ if __name__ == "__main__":
         pos1 = tr.tensor(pb.getLinkState(env.robot_id, gripper_link_indices[0])[0])
         pos2 = tr.tensor(pb.getLinkState(env.robot_id, gripper_link_indices[1])[0])
         pb.setCollisionFilterPair(env.robot_id, env.robot_id, gripper_link_indices[0], gripper_link_indices[1], enableCollision=True)
+        pb.setCollisionFilterPair(env.robot_id, env.robot_id, gripper_link_indices[0], pickup_joints[0], enableCollision=True)
+        pb.setCollisionFilterPair(env.robot_id, env.robot_id, gripper_link_indices[1], pickup_joints[0], enableCollision=True)
+        pb.setCollisionFilterPair(env.robot_id, env.robot_id, pickup_joints[0], approach_joints[-1], enableCollision=True)
+
+
         joint_index_map = {joint_idx: i for i, joint_idx in enumerate(arm_indices)}
         agent.model.pickup_joints_idx = [joint_index_map[j] for j in pickup_joints]
         agent.model.approach_joints_idx = [joint_index_map[j] for j in approach_joints]
@@ -500,21 +529,22 @@ if __name__ == "__main__":
         v_f = world_part_positions = get_object_part_world_positions(obj)
         midpoint = (pos1 + pos2) / 2.0
         v_f_np = np.array(v_f)
-        v_f_tensor = torch.tensor(v_f_np, dtype=torch.float16)  # shape (n_voxels, 3)
+        v_f_tensor = torch.tensor(v_f_np, dtype=torch.float32)  # shape (n_voxels, 3)
         distances = torch.norm(v_f_tensor - midpoint, dim=1)
         old_distance = torch.min(distances)
         state = make_state(state_angles,pos1,pos2, obj_pos, obj_orientation,use_right_hand,v_f).to(device)
         #print(len(state))
         done = False
 
-        states, actions, log_probs, rewards_list, values, next_values,dis, dones = [], [], [], [], [], [], [],[]
+        states,dev, actions, log_probs, rewards_list, values, next_values,dis, dones = [], [], [], [], [], [], [],[],[]
         steps = 0
         arewardlist = []
         prewardlist = []
         total_approach_reward = []
         total_pickup_reward = []
         device = next(agent.model.parameters()).device
-
+      #  global was_touching
+        was_touching = False
         while steps<=50:
 
             state_tensor = state.float()
@@ -546,7 +576,7 @@ if __name__ == "__main__":
             pos2 = tr.tensor(pb.getLinkState(env.robot_id, gripper_link_indices[1])[0])
             v_f = world_part_positions = get_object_part_world_positions(obj)
             next_state = make_state(next_state_angles,pos1,pos2, next_obj_pos, next_obj_orientation,use_right_hand,v_f).to(device)
-            areward, preward, graspcheck, new_distance, total_reward = rewards_potential(env,obj_pos,obj_id,gripper_link_indices,v_f,old_distance,scale_factor=10)
+            areward, preward, graspcheck, new_distance, total_reward = rewards_potential(env,obj_pos,obj_id,gripper_link_indices,v_f,old_distance,scale_factor=23)
             old_distance = new_distance
             dis.append(new_distance)
             reward = areward+preward
@@ -566,22 +596,23 @@ if __name__ == "__main__":
             log_probs.append(log_prob)
             rewards_list.append(reward)
             arewardlist.append(areward)
+            dev.append(std_dev)
             prewardlist.append(preward)
             values.append(agent.model(state_tensor)[2].detach())
-            dones.append(torch.tensor(done, dtype=torch.float16))
+            dones.append(torch.tensor(done, dtype=torch.float32))
             state = next_state
 
         with torch.no_grad():
             final_value = agent.model(state.float())[2].squeeze()
         values = torch.stack(values).squeeze().to(device)
         next_values = torch.cat([values[1:], final_value.unsqueeze(0)], dim=0).to(device)
-        rewards_list = tr.tensor(rewards_list, dtype=tr.float16, device=device)
-        arewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in arewardlist], dtype=tr.float16,
+        rewards_list = tr.tensor(rewards_list, dtype=tr.float32, device=device)
+        arewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in arewardlist], dtype=tr.float32,
                                 device=device)
-        prewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in prewardlist], dtype=tr.float16,
+        prewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in prewardlist], dtype=tr.float32,
                                 device=device)
-        dis = tr.tensor(dis, dtype=tr.float16, device=device)
-        dones = torch.tensor(dones, dtype=torch.float16).to(device)
+        dis = tr.tensor(dis, dtype=tr.float32, device=device)
+        dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Ensure values, next_values, dones are on device:
         values = values.to(device)
@@ -593,34 +624,34 @@ if __name__ == "__main__":
         agent.update(tr.stack(states).to(device), tr.stack(actions), tr.stack(log_probs).to(device),rewards_list,arewardlist,prewardlist,dis, values, next_values, dones)
         #suppress_cpp_output_stop()
         if episode%10 == 0:
-            print(f"Episode {episode}, Tot_reward: {sum(rewards_list)}, ApproachReward: {sum(arewardlist)/len(arewardlist)}, Pickreward: {sum(prewardlist)/len(prewardlist)}")
+            print(f"Episode {episode}, Tot_reward: {sum(rewards_list)}, ApproachReward: {sum(arewardlist)}, Pickreward: {sum(prewardlist)}, EMA app: {torch.mean(torch.tensor(agent.last_approach_reward_avg))}, EMA pick: {torch.mean(torch.tensor(agent.last_pickup_reward_avg))}")
         if episode % 20 == 0:
             print(f"Episode {episode}, StdDev: {std_dev[0]}")
         rewards_out.append(sum(rewards_list))
-        log_p.append(log_probs)
+        log_p.append(tr.mean(torch.tensor(log_probs)))
         std_d.append(std_dev)
         areward_out.append(sum(arewardlist))
         preward_out.append(sum(prewardlist))
-        if episode % 1000 == 1 and episode!=1:
+        if episode % 1000 == 0 and episode!=0:
             append_rewards_to_pickle(log_p, PICKLE_FILE2)
             #print(f"Appended {len(rewards_out)} rewards at iteration {episode}")
             log_p.clear()
 
-        if episode % 1000 == 1 and episode!=1:
+        if episode % 1000 == 0 and episode!=0:
             append_rewards_to_pickle(std_d, PICKLE_FILE3)
             #print(f"Appended {len(rewards_out)} rewards at iteration {episode}")
             std_d.clear()
 
-        if episode % 1000 == 1 and episode!=1:
+        if episode % 1000 == 0 and episode!=0:
             append_rewards_to_pickle(rewards_out, PICKLE_FILE)
             print(f"Appended {len(rewards_out)} rewards at iteration {episode}")
             rewards_out.clear()
         env.close()
-        if episode % 10000 == 0 and episode != 0:
+        if episode % 1000 == 0 and episode != 0:
             torch.save({
                 'epoch': episode,
                 'model_state_dict': agent.model.state_dict(),
                 'optimizer_state_dict': agent.optimizer.state_dict(),
                 'object': obj.positions
-            }, 'ppo_checkpoint_3.pth')
+            }, 'ppo_checkpoint_5.pth')
         episode+=1

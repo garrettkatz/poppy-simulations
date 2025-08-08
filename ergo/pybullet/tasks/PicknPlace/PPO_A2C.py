@@ -208,13 +208,13 @@ def make_state(angles, object_pos, obj_orientation,use_right_hand,obj_part_posit
     tip1pos = tr.tensor(pos1)
     tip2pos = tr.tensor(pos2)
     use_right_hand_value = int(use_right_hand)  # converts True → 1, False → 0
-    use_right_hand_tensor = tr.tensor([use_right_hand_value], dtype=tr.float16)
+    use_right_hand_tensor = tr.tensor([use_right_hand_value], dtype=tr.float32)
     # Base state (15D): joint angles + object position + orientation + hand indicator
     base_state = tr.cat((rangles,tip1pos,tip2pos, objp, objo, use_right_hand_tensor))
 
     # Optionally concatenate voxel-based object features
     if obj_part_positions is not None:
-        part_tensor = torch.tensor(np.array(obj_part_positions), dtype=tr.float16).flatten()
+        part_tensor = torch.tensor(np.array(obj_part_positions), dtype=tr.float32).flatten()
         return torch.cat((part_tensor,base_state))
     else:
         return base_state
@@ -233,7 +233,7 @@ def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_dista
 
     # Compute distance to nearest voxel
     v_f_np = np.array(v_f)
-    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float16)  # shape (n_voxels, 3)
+    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float32)  # shape (n_voxels, 3)
     distances = torch.norm(v_f_tensor - gripper_midpoint, dim=1)
     new_distance = torch.min(distances)
 
@@ -602,7 +602,7 @@ if __name__ == "__main__":
         v_f = world_part_positions = get_object_part_world_positions(obj)
         midpoint = (pos1 + pos2) / 2.0
         v_f_np = np.array(v_f)
-        v_f_tensor = torch.tensor(v_f_np, dtype=torch.float16)  # shape (n_voxels, 3)
+        v_f_tensor = torch.tensor(v_f_np, dtype=torch.float32)  # shape (n_voxels, 3)
         distances = torch.norm(v_f_tensor - midpoint, dim=1)
         old_distance = torch.min(distances)
         state = make_state(state_angles, obj_pos, obj_orientation,use_right_hand,v_f,pos1,pos2).to(device)
@@ -672,20 +672,20 @@ if __name__ == "__main__":
             arewardlist.append(areward)
             prewardlist.append(preward)
             values.append(agent.model(state_tensor)[2].detach())
-            dones.append(torch.tensor(done, dtype=torch.float16))
+            dones.append(torch.tensor(done, dtype=torch.float32))
             state = next_state
 
         with torch.no_grad():
             final_value = agent.model(state.float())[2].squeeze()
         values = torch.stack(values).squeeze().to(device)
         next_values = torch.cat([values[1:], final_value.unsqueeze(0)], dim=0).to(device)
-        rewards_list = tr.tensor(rewards_list, dtype=tr.float16, device=device)
-        arewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in arewardlist], dtype=tr.float16,
+        rewards_list = tr.tensor(rewards_list, dtype=tr.float32, device=device)
+        arewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in arewardlist], dtype=tr.float32,
                                 device=device)
-        prewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in prewardlist], dtype=tr.float16,
+        prewardlist = tr.tensor([r.item() if isinstance(r, tr.Tensor) else r for r in prewardlist], dtype=tr.float32,
                                 device=device)
         dis = tr.tensor(dis, dtype=tr.float32, device=device)
-        dones = torch.tensor(dones, dtype=torch.float16).to(device)
+        dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Ensure values, next_values, dones are on device:
         values = values.to(device)

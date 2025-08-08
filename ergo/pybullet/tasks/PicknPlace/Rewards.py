@@ -21,7 +21,7 @@ def rewards_potential(env, obj_pos, obj_id, use_right_hand, v_f, old_distance=No
 
     # Compute distance to nearest voxel
     v_f_np = np.array(v_f)
-    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float16)  # shape (n_voxels, 3)
+    v_f_tensor = torch.tensor(v_f_np, dtype=torch.float32)  # shape (n_voxels, 3)
     distances = torch.norm(v_f_tensor - gripper_midpoint, dim=1)
     new_distance = torch.min(distances)
 

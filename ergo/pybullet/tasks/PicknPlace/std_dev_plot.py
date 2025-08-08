@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 # Load rewards
-filename = 'rewards10thdexperiment_contactP_entropy_stddev.pickle'
+filename = 'std_dev2.pickle'
 with open(filename, 'rb') as f:
     raw_rewards = pickle.load(f)
 print(f'Type of raw_rewards: {type(raw_rewards)}')
