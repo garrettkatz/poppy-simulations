@@ -519,6 +519,12 @@ def make_state(angles, pos1, pos2, object_pos, obj_orientation, use_right_hand, 
 
 old_obj_height = 0.0
 was_touching = False
+def aggressive_penalty(d, threshold=0.1):
+    # Normalize to [0, 1]
+    t = torch.clamp(d / threshold, 0, 1)
+    # Cubic smoothstep for smooth transition
+    penalty = 3 * t**2 - 2 * t**3
+    return -penalty  # From 0 to -1
 
 def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
     ip_positions = [torch.tensor(pb.getLinkState(env.robot_id, idx)[0]) for idx in gripper_link_indices]
