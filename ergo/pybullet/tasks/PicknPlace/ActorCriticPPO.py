@@ -153,7 +153,7 @@ class ActorCritic(nn.Module):
         features = self.shared(state)
         mean = self.actor(features)
         value = self.critic(features)
-        log_std = self.log_std.clamp(-5, 0)
+        log_std = self.log_std.clamp(-20, 20)
         std = torch.exp(log_std)
         return mean, std, value
 
@@ -543,6 +543,9 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
     approach_reward += get_gripping_score(env,obj,gripper_link_indices,0.015) #[0,1]
     approach_reward += 0.1*get_orientation_score(env,obj,gripper_link_indices) #[0,1]       # Range [0,2] - mean stuff
 
+    current_pos = torch.tensor(pb.getBasePositionAndOrientation(obj_id)[0])
+    xy_displacement = torch.norm(current_pos[:2] - torch.tensor(obj_pos[:2]))
+    approach_reward += aggressive_penalty(xy_displacement)
     # Check if any voxel is within gripper bounding box
     # if False , ideal width 2 x voxel
     # if true , slightly lower than voxel
@@ -560,10 +563,11 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
         projection = torch.dot(tip1_to_voxel, tip1_to_tip2) / torch.norm(tip1_to_tip2)
         if 0 <= projection <= torch.norm(tip1_to_tip2):
             distance_to_line = torch.norm(tip1_to_voxel - projection * tip1_to_tip2 / torch.norm(tip1_to_tip2))
-            if distance_to_line < 0.02:  # Voxel is close to gripper line
+            if distance_to_line < 0.01:  # Voxel is close to gripper line
                 voxels_in_gripper += 1
     if voxels_in_gripper>0:
-        print("Object Voxel betweem gripper!")
+        print("Object Voxel between gripper zone!")
+        approach_reward += 1
     # Reward based on gripper width appropriateness
     if voxels_in_gripper > 0:
         # Object between grippers - reward slightly closed gripper
@@ -576,7 +580,12 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
         width_error = abs(tip_distance - optimal_width)
         gripper_reward += 0.1 * torch.exp(-5 * width_error)
 
-    obj_height = pb.getBasePositionAndOrientation(obj_id)[0][2]
+    # penalty for touching gripper tips with each other
+    if len(tip_contacts)>0:
+        print("Grippers touching each other")
+        gripper_reward -= 1
+
+    obj_height = current_pos[2]
     height_diff = obj_height - obj_pos[2]
 
     fingers_touching = 0
@@ -595,6 +604,7 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
     is_touching = False
     if fingers_touching >= 2:
         gripper_reward += 1
+        approach_reward += 1
         is_touching = True
         if was_touching == True:
             gripper_reward += 0.5
@@ -602,7 +612,7 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
         else:
             print("first double touch reward ")
 
-    if pb.getBasePositionAndOrientation(obj_id)[0][0] > obj_pos[0] +0.3:
+    if pb.getBasePositionAndOrientation(obj_id)[0][0] > obj_pos[0] + 0.3:
         print("moved object ")
         approach_reward-=1.0
     height_reward = torch.tensor(0.0)
@@ -617,7 +627,7 @@ def new_rewards(env,obj,obj_pos,obj_id,gripper_link_indices,v_f):
         approach_reward += 10.0
         print("Pick success")
     approach_reward += height_reward
-    total_reward = approach_reward+gripper_reward
+    total_reward = approach_reward + gripper_reward
     return total_reward,approach_reward,gripper_reward,g_check
 
 def rewards_potential(env, obj_pos, obj_id, gripper_link_indices, v_f, old_distance, scale_factor):
@@ -922,7 +932,6 @@ if __name__ == "__main__":
 
             # Get next value (or final value if done)
             if done:
-
                 next_value = torch.tensor(0.0, device=device)
             else:
                 with torch.no_grad():
@@ -959,7 +968,7 @@ if __name__ == "__main__":
             agent.num_updates += 1
             if agent.num_updates % 10 == 0:
                 print(f"Episode {episode}, Tot_reward: {sum(episode_rewards):.3f}, "
-                      f"Avg.ApproachReward: {agent.last_pickup_reward_avg:.3f}, "
+                      f"Avg.ApproachReward: {agent.last_approach_reward_avg:.3f}, "
                       f"Avg.Pickreward: {agent.last_pickup_reward_avg:.3f}, "
                       )
             if agent.num_updates % 10 == 0:
@@ -973,13 +982,13 @@ if __name__ == "__main__":
 
         # Save data periodically
         if episode % 1000 == 0 and episode != 0:
-            append_rewards_to_pickle(log_p, 'log_probs2.pickle')
+            append_rewards_to_pickle(log_p, 'log_probs2_c.pickle')
             log_p.clear()
 
-            append_rewards_to_pickle(std_d, 'std_dev2.pickle')
+            append_rewards_to_pickle(std_d, 'std_dev2_c.pickle')
             std_d.clear()
 
-            append_rewards_to_pickle(rewards_out, 'rewards2.pickle')
+            append_rewards_to_pickle(rewards_out, 'rewards2_c.pickle')
             print(f"Appended {len(rewards_out)} rewards at iteration {episode}")
             rewards_out.clear()
 
