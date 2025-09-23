@@ -739,7 +739,7 @@ def AttemptGrips(obj,gen):
     Result = []
     num_objects = 1
 
-    exp = MultObjPick.experiment()
+    exp = MultObjPick.experiment(_show=False)
     exp.CreateScene()
     env = exp.env
 
@@ -758,7 +758,7 @@ def AttemptGrips(obj,gen):
     coords = learner.voxel_to_sim_coords(cands, voxel_corner)
     # object may not be balanced on its own, run physics for a few seconds to let it settle in a stable pose
     orig_pos, orig_orn = pb.getBasePositionAndOrientation(obj_id)
-    exp.env.settle(exp.env.get_position(), seconds=3)
+    exp.env.settle(exp.env.get_position(), seconds=1)
     rest_pos, rest_orn = pb.getBasePositionAndOrientation(obj_id)
 
     # abort if object fell off of table
@@ -806,28 +806,29 @@ def AttemptGrips(obj,gen):
             # input('.')
         picked_pos, _ = pb.getBasePositionAndOrientation(obj_id)
         height = (picked_pos[2] - rest_pos[2])
-        if ((picked_pos[2]-rest_pos[2])>0.004):
+        if ((picked_pos[2]-rest_pos[2])>0.03):
             num_grips_success = num_grips_success+1
-            print("S")
-        elif ((picked_pos[2]-rest_pos[2])<=0.004):
+         #   print("S")
+        elif ((picked_pos[2]-rest_pos[2])<=0.03):
             height = 0
-            print("F")
+           # print("F")
         res.append(height)
         pb.removeBody(obj_id)
     max_res = max(res)
     avg_res = (sum(res)/len(res))*10
     #pb.disconnect()
     env.close()
-    if num_grips_success>0 and gen==0:
-        print("dumping to file , good obj")
-        with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
-            pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        handle.close()
-    if gen>0:
-        print("dumping to file")
-        with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
-            pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        handle.close()
+    print("grasps:",num_grips_success)
+   # if num_grips_success>0 and gen==0:
+      #  print("dumping to file , good obj")
+       # with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
+            #pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #handle.close()
+ #   if gen>0:
+     #   print("dumping to file")
+        #with open(f'mutantGen_{gen}_OBJ_details.pickle', 'ab+') as handle:
+            #pickle.dump(obj.positions, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #handle.close()
     return max_res , num_grips_success
 
 def BigTest():

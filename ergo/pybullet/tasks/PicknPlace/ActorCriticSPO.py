@@ -145,7 +145,7 @@ class ActorCritic(nn.Module):
         )
         self.actor = nn.Linear(256, action_dim)
         self.critic = nn.Linear(256, 1)
-        self.log_std = nn.Parameter(torch.full((action_dim,), -1.0))
+        self.log_std = nn.Parameter(torch.full((action_dim,), -0.5))
         self.approach_joints_idx = []
         self.pickup_joints_idx = []
 
@@ -168,7 +168,7 @@ class ActorCritic(nn.Module):
 
 
 class PPOAgent:
-    def __init__(self, state_dim, action_dim, lr=1e-4, gamma=0.99, clip_eps=0.2, epochs=10,
+    def __init__(self, state_dim, action_dim, lr=1e-4, gamma=0.999, clip_eps=0.2, epochs=10,
                  batch_size=1000, minibatch_size=100):
         self.model = ActorCritic(state_dim, action_dim)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
@@ -233,7 +233,7 @@ class PPOAgent:
         gae = 0
         for i in reversed(range(len(rewards))):
             delta = rewards[i] + self.gamma * next_values[i] * (1 - dones[i]) - values[i]
-            gae = delta + 0.999 * 0.98 * (1 - dones[i]) * gae
+            gae = delta + 0.99 * 0.95 * (1 - dones[i]) * gae
             advantages.insert(0, gae)
             returns.insert(0, gae + values[i])
         advantages = torch.tensor(advantages, device=device, dtype=torch.float32)
@@ -450,6 +450,8 @@ def aggressive_penalty(d, threshold=0.1):
     t = torch.clamp(d / threshold, 0, 1)
     # Cubic smoothstep for smooth transition
     penalty = 3 * t**2 - 2 * t**3
+    if penalty == 1:
+        print("Moved in xy 0.1 units")
     return -penalty  # From 0 to -1
 
 def nonlinear_entropy_weight(r, r_min, r_max, ent_min, ent_max):
@@ -476,7 +478,7 @@ def new_rewards(env, obj, obj_pos, obj_id, gripper_link_indices, v_f):
     v_f_tensor = torch.tensor(np.array(v_f), dtype=torch.float32)
     distances = torch.norm(v_f_tensor - gripper_midpoint, dim=1)
 
-    mean_distance = torch.mean(distances)
+    mean_distance = torch.min(distances)
     approach_reward = torch.tensor(0.0)
     approach_reward -= 2 * mean_distance
     approach_reward += get_gripping_score(env, obj, gripper_link_indices, 0.015)  # [0,1]
@@ -500,6 +502,7 @@ def new_rewards(env, obj, obj_pos, obj_id, gripper_link_indices, v_f):
             if distance_to_line < 0.01:
                 voxels_in_gripper += 1
     if voxels_in_gripper > 0:
+        print("Voxel in gripping zone")
         approach_reward += 1
 
     # Reward based on gripper width appropriateness
@@ -507,13 +510,14 @@ def new_rewards(env, obj, obj_pos, obj_id, gripper_link_indices, v_f):
     if voxels_in_gripper > 0:
         optimal_width = 0.013
         width_error = abs(tip_distance - optimal_width)
-        gripper_reward += torch.exp(-10 * width_error)
+        gripper_reward += 0.5*torch.exp(-100 * width_error)
     else:
         optimal_width = 0.030
         width_error = abs(tip_distance - optimal_width)
-        gripper_reward += torch.exp(-5 * width_error)
+        gripper_reward += 0.5*torch.exp(-100 * width_error)
 
     if len(tip_contacts) > 0:
+       # print("tip touch")
         gripper_reward -= 1
 
     obj_height = pb.getBasePositionAndOrientation(obj_id)[0][2]
@@ -541,12 +545,14 @@ def new_rewards(env, obj, obj_pos, obj_id, gripper_link_indices, v_f):
     if height_diff > 0.001 and is_touching:
         if height_diff < 0.05:
             height_reward = 2.0 * (height_diff / 0.05)
+            print("Initial lift")
         else:
             height_reward = 2.0 + 1.0 * (height_diff - 0.05)
+            print("continuous lift")
     if obj_height > obj_pos[2] + 0.2 and is_touching:
         g_check = True
         approach_reward += 10.0
-    height_reward = height_reward.clamp(min=0,max=5)
+   # height_reward = height_reward.clamp(min=0,max=5)
     approach_reward += height_reward
     total_reward = approach_reward + gripper_reward
     return total_reward, approach_reward, gripper_reward, g_check
@@ -612,7 +618,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Initialize agent with batch collection parameters
-    agent = PPOAgent(state_dim, action_dim, batch_size=500, minibatch_size=100)
+    agent = PPOAgent(state_dim, action_dim, batch_size=1000, minibatch_size=100)
     agent.model.to(device)
 
     # Tracking variables
@@ -632,7 +638,7 @@ if __name__ == "__main__":
     obj.GenerateObject(dims, n_parts, [0, 0, 0])
 
     if resume == 1:
-        checkpoint = torch.load('ppo_checkpoint_6.pth', map_location=device)
+        checkpoint = torch.load('ppo_checkpoint_spo.pth', map_location=device)
         print(checkpoint.keys())
         agent.model.load_state_dict(checkpoint['model_state_dict'])
         agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -646,7 +652,7 @@ if __name__ == "__main__":
         show = False
 
         if episode % 10000 == 0:
-            show = False
+            show = True
 
         exp = MultObjPick.experiment(show)
         exp.CreateScene()
@@ -660,7 +666,7 @@ if __name__ == "__main__":
         if episode != 0:
             exp.env.settle(exp.env.get_position(), seconds=0.2)
         else:
-            exp.env.settle(exp.env.get_position(), seconds=3)
+            exp.env.settle(exp.env.get_position(), seconds=1)
 
         obj_pos, obj_orientation = pb.getBasePositionAndOrientation(obj_id)
         if obj_pos[2] < table_height:
@@ -797,11 +803,12 @@ if __name__ == "__main__":
             agent.num_updates += 1
             avg_reward = sum(agent.episode_rewards_50) / len(agent.episode_rewards_50)
             if agent.num_updates % 10 == 0:
-                print(f"Episode {episode}, Tot_reward: {sum(episode_rewards):.3f}, "
+                print(f"Episode {episode},Update {agent.num_updates} Tot_reward: {sum(episode_rewards):.3f}, "
                       f"Avg.ApproachReward at episode: {agent.last_approach_reward_avg:.3f}, "
                       f"Avg.Pickreward: {agent.last_pickup_reward_avg:.3f}, "
                       f"Avg.Total reward in last 50 episodes : {avg_reward:.3f}, "
                       )
+
             if agent.num_updates % 10 == 0:
                 print(f"Episode {episode}, StdDev: {[sdev.item() for sdev in std_dev]}")
         # Store episode statistics
@@ -830,7 +837,7 @@ if __name__ == "__main__":
                 'optimizer_state_dict': agent.optimizer.state_dict(),
                 'object': obj.positions,
                 'batch_size': len(agent.batch_states)
-            }, 'ppo_checkpoint_6.pth')
+            }, 'ppo_checkpoint_spo.pth')
 
         env.close()
         episode += 1

@@ -482,6 +482,10 @@ if __name__ == "__main__":
         else:
             exp.env.settle(exp.env.get_position(), seconds=3)
 
+        for i in range(pb.getNumJoints(env.robot_id)):
+            joint_info = pb.getJointInfo(env.robot_id, i)
+            link_name = joint_info[12].decode('utf-8')  # link name
+            print(joint_info[1].decode('utf-8'), link_name)
         obj_pos, obj_orientation = pb.getBasePositionAndOrientation(obj_id)
         if obj_pos[2] < table_height:
             pb.removeBody(obj_id)
